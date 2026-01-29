@@ -1,0 +1,1129 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hệ thống dữ liệu trung chuyển</title>
+    <link rel="icon" type="image/svg+xml" href="https://quangminhpro.com/wp-content/uploads/2025/08/logo-3.svg">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="./public/style.css">
+    <script src="./public/script.js" defer></script>
+    <script src="https://apis.google.com/js/api.js"></script>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header-modern">
+            <!-- Left: Logo + Title -->
+            <div class="brand">
+                <img src="https://quangminhpro.com/wp-content/uploads/2025/08/logo-3.svg" alt="Quang Minh Logo"
+                    class="brand-logo">
+                <div class="brand-text">
+                    <h1>HỆ THỐNG DỮ LIỆU TRUNG CHUYỂN</h1>
+                </div>
+            </div>
+
+            <!-- Right: Status Pills -->
+            <div class="header-status">
+                <div id="connection-status" class="status-pill">
+                    <span class="dot"></span>
+                    <span id="status-text">Chưa kết nối</span>
+                </div>
+                <div id="last-update" class="status-pill light">
+                    ⏱ <span id="last-update-text">---</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab Navigation -->
+        <div class="tab-navigation">
+            <button class="tab-button active" data-tab="khachhang">
+                <i class="fas fa-users"></i> Dữ liệu khách hàng
+            </button>
+            <button class="tab-button" data-tab="nhapkho">
+                <i class="fas fa-warehouse"></i> Nhập kho thành phẩm
+            </button>
+            <button class="tab-button" data-tab="xuatkho">
+                <i class="fas fa-truck"></i> Xuất kho bán hàng
+            </button>
+            <button class="tab-button" data-tab="lenhsanxuat">
+                <i class="fas fa-industry"></i> Xuất vật tư sản xuất
+            </button>
+            <button class="tab-button" data-tab="xuatbaohanh">
+                <i class="fas fa-shield-halved"></i> Xuất vật tư bảo hành
+            </button>
+        </div>
+
+        <!-- Tab Dữ liệu khách hàng -->
+        <div id="khachhang-tab" class="tab-content">
+            <div class="filter-section">
+                <div class="filter-title">
+                    <i class="fas fa-sliders-h"></i> Thiết lập bộ lọc - Dữ liệu khách hàng
+                </div>
+
+                <div class="filter-grid">
+                    <div class="filter-group">
+                        <label class="filter-label" id="don-vi-label-kh">
+                            Đơn vị phụ trách -
+                            <span class="selected-count" id="don-vi-selected-kh">
+                                Đã chọn: Tất cả
+                            </span>
+                        </label>
+
+                        <div class="multi-select-container" id="don-vi-phu-trach-kh-container">
+                            <!-- Các checkbox sẽ được thêm bằng JavaScript -->
+                        </div>
+                    </div>
+
+                    <div class="filter-group">
+                        <label class="filter-label">Ngày phát sinh từ</label>
+                        <div class="date-group">
+                            <div class="date-input">
+                                <input type="date" class="filter-input" id="tu-ngay-kh">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="filter-group">
+                        <label class="filter-label">Ngày phát sinh đến</label>
+                        <div class="date-group">
+                            <div class="date-input">
+                                <input type="date" class="filter-input" id="den-ngay-kh">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="action-buttons">
+                    <button class="btn btn-primary" id="btn-loc-kh">
+                        <i class="fas fa-filter"></i> Lọc
+                    </button>
+                    <button class="btn btn-secondary" id="btn-reset-kh">
+                        <i class="fas fa-redo"></i> Đặt lại
+                    </button>
+                </div>
+            </div>
+
+            <div class="results-section">
+                <div class="results-header">
+                    <div class="results-count" id="results-count-kh"></div>
+                    <button class="export-btn" id="btn-export-kh">
+                        <i class="fas fa-file-export"></i> Xuất Excel
+                    </button>
+                </div>
+
+                <div class="table-container-wrapper">
+                    <div id="loading-kh" class="loading" style="display: none;">
+                        <div class="loading-spinner"></div>
+                        <p>Đang tải dữ liệu từ Google Sheets...</p>
+                    </div>
+
+                    <div id="results-container-kh">
+                        <div class="no-results" id="no-results-kh">
+                            <i class="fas fa-search"></i>
+                            <p>Chưa có dữ liệu. Vui lòng thiết lập bộ lọc và nhấn "Lọc".</p>
+                        </div>
+
+                        <div class="table-container">
+                            <table class="results-table" id="results-table-kh" style="display: none;">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Là tổ chức/cá nhân</th>
+                                        <th>Là nhà cung cấp</th>
+                                        <th>Mã khách hàng (*)</th>
+                                        <th>Tên khách hàng (*)</th>
+                                        <th>Địa chỉ</th>
+                                        <th>Mã số thuế</th>
+                                        <th>Điện thoại</th>
+                                        <th>Điện thoại di động</th>
+                                        <th>Fax</th>
+                                        <th>Email</th>
+                                        <th>Website</th>
+                                        <th>Nhóm KH/NCC</th>
+                                        <th>Số CMND</th>
+                                        <th>Ngày cấp</th>
+                                        <th>Nơi cấp</th>
+                                        <th>Xưng hô</th>
+                                        <th>Họ và tên NLH</th>
+                                        <th>Chức danh NLH</th>
+                                        <th>Địa chỉ người liên hệ</th>
+                                        <th>ĐT di động NLH</th>
+                                        <th>ĐT di động khác của NLH</th>
+                                        <th>ĐT cố định NLH</th>
+                                        <th>Email người liên hệ</th>
+                                        <th>Số tài khoản</th>
+                                        <th>Tên ngân hàng</th>
+                                        <th>Chi nhánh</th>
+                                        <th>Tỉnh/TP TK ngân hàng</th>
+                                        <th>Ngày phát sinh</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="results-body-kh">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Nhập kho Tab -->
+        <div id="nhapkho-tab" class="tab-content active">
+            <div class="filter-section">
+                <div class="filter-title">
+                    <i class="fas fa-sliders-h"></i> Thiết lập bộ lọc - Nhập kho thành phẩm
+                </div>
+
+                <div class="filter-grid">
+                    <div class="filter-group">
+                        <label class="filter-label" id="ma-hop-dong-label-nhap">
+                            Mã hợp đồng -
+                            <span class="selected-count" id="ma-hop-dong-selected-nhap">
+                                Đã chọn: Tất cả
+                            </span>
+                        </label>
+
+                        <div class="multi-select-container" id="ma-hop-dong-nhap-container">
+                            <!-- Các checkbox sẽ được thêm bằng JavaScript -->
+                        </div>
+                    </div>
+
+                    <div class="filter-group">
+                        <label class="filter-label" id="don-vi-label-nhap">
+                            Đơn vị phụ trách -
+                            <span class="selected-count" id="don-vi-selected-nhap">
+                                Đã chọn: Tất cả
+                            </span>
+                        </label>
+
+                        <div class="multi-select-container" id="don-vi-phu-trach-nhap-container">
+                            <!-- Các checkbox sẽ được thêm bằng JavaScript -->
+                        </div>
+                    </div>
+
+                    <div class="filter-group">
+                        <label class="filter-label">Loại đơn hàng</label>
+                        <div class="radio-group">
+                            <div class="radio-option">
+                                <input type="radio" id="loai-tat-ca-nhap" name="loai-don-hang-nhap" value="Tất cả"
+                                    checked>
+                                <label for="loai-tat-ca-nhap">Tất cả</label>
+                            </div>
+                            <div class="radio-option">
+                                <input type="radio" id="loai-tieu-chuan-nhap" name="loai-don-hang-nhap"
+                                    value="Tiêu chuẩn">
+                                <label for="loai-tieu-chuan-nhap">Tiêu chuẩn</label>
+                            </div>
+                            <div class="radio-option">
+                                <input type="radio" id="loai-khac-chuan-nhap" name="loai-don-hang-nhap"
+                                    value="Khác chuẩn">
+                                <label for="loai-khac-chuan-nhap">Khác chuẩn</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="filter-group">
+                        <label class="filter-label">Từ ngày</label>
+                        <div class="date-group">
+                            <div class="date-input">
+                                <input type="date" class="filter-input" id="tu-ngay-nhap">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="filter-group">
+                        <label class="filter-label">Đến ngày</label>
+                        <div class="date-group">
+                            <div class="date-input">
+                                <input type="date" class="filter-input" id="den-ngay-nhap">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="action-buttons">
+                    <button class="btn btn-primary" id="btn-loc-nhap">
+                        <i class="fas fa-filter"></i> Lọc
+                    </button>
+                    <button class="btn btn-secondary" id="btn-reset-nhap">
+                        <i class="fas fa-redo"></i> Đặt lại
+                    </button>
+                </div>
+            </div>
+
+            <div class="results-section">
+                <div class="results-header">
+                    <div class="results-count" id="results-count-nhap"></div>
+                    <button class="export-btn" id="btn-export-nhap">
+                        <i class="fas fa-file-export"></i> Xuất Excel
+                    </button>
+                </div>
+
+                <div class="table-container-wrapper">
+                    <div id="loading-nhap" class="loading" style="display: none;">
+                        <div class="loading-spinner"></div>
+                        <p>Đang tải dữ liệu từ Google Sheets...</p>
+                    </div>
+
+                    <div id="results-container-nhap">
+                        <div class="no-results" id="no-results-nhap">
+                            <i class="fas fa-search"></i>
+                            <p>Chưa có dữ liệu. Vui lòng thiết lập bộ lọc và nhấn "Lọc".</p>
+                        </div>
+
+                        <div class="table-container">
+                            <table class="results-table" id="results-table-nhap" style="display: none;">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Hiển thị trên sổ</th>
+                                        <th>Loại nhập kho</th>
+                                        <th>Ngày hạch toán (*)</th>
+                                        <th>Ngày chứng từ (*)</th>
+                                        <th>Số chứng từ (*)</th>
+                                        <th>Mã đối tượng</th>
+                                        <th>Tên đối tượng</th>
+                                        <th>Người giao hàng</th>
+                                        <th>Diễn giải</th>
+                                        <th>Nhân viên bán hàng</th>
+                                        <th>Kèm theo</th>
+                                        <th>Loại tiền</th>
+                                        <th>Tỷ giá</th>
+                                        <th>Mã hàng (*)</th>
+                                        <th>Tên hàng</th>
+                                        <th>Kho (*)</th>
+                                        <th>Hàng hóa giữ hộ/bán hộ</th>
+                                        <th>TK Nợ (*)</th>
+                                        <th>TK Có (*)</th>
+                                        <th>ĐVT</th>
+                                        <th>Số lượng</th>
+                                        <th>Đơn giá</th>
+                                        <th>Thành tiền</th>
+                                        <th>Thành tiền quy đổi</th>
+                                        <th>Số lô</th>
+                                        <th>Hạn sử dụng</th>
+                                        <th>Khoản mục CP</th>
+                                        <th>Đơn vị</th>
+                                        <th>Đối tượng THCP</th>
+                                        <th>Công trình</th>
+                                        <th>Đơn đặt hàng</th>
+                                        <th>Hợp đồng bán</th>
+                                        <th>Mã thống kê</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="results-body-nhap">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Xuất kho Tab -->
+        <div id="xuatkho-tab" class="tab-content">
+            <div class="filter-section">
+                <div class="filter-title">
+                    <i class="fas fa-sliders-h"></i> Thiết lập bộ lọc - Xuất kho bán hàng
+                </div>
+
+                <div class="filter-grid">
+                    <div class="filter-group">
+                        <label class="filter-label" id="ma-hop-dong-label-xuat">
+                            Mã hợp đồng -
+                            <span class="selected-count" id="ma-hop-dong-selected-xuat">
+                                Đã chọn: Tất cả
+                            </span>
+                        </label>
+
+                        <div class="multi-select-container" id="ma-hop-dong-xuat-container">
+                            <!-- Các checkbox sẽ được thêm bằng JavaScript -->
+                        </div>
+                    </div>
+
+                    <div class="filter-group">
+                        <label class="filter-label" id="don-vi-label-xuat">
+                            Đơn vị phụ trách -
+                            <span class="selected-count" id="don-vi-selected-xuat">
+                                Đã chọn: Tất cả
+                            </span>
+                        </label>
+
+                        <div class="multi-select-container" id="don-vi-phu-trach-xuat-container">
+                            <!-- Các checkbox sẽ được thêm bằng JavaScript -->
+                        </div>
+                    </div>
+
+                    <div class="filter-group">
+                        <label class="filter-label">Loại đơn hàng</label>
+                        <div class="radio-group">
+                            <div class="radio-option">
+                                <input type="radio" id="loai-tat-ca-xuat" name="loai-don-hang-xuat" value="Tất cả"
+                                    checked>
+                                <label for="loai-tat-ca-xuat">Tất cả</label>
+                            </div>
+                            <div class="radio-option">
+                                <input type="radio" id="loai-tieu-chuan-xuat" name="loai-don-hang-xuat"
+                                    value="Tiêu chuẩn">
+                                <label for="loai-tieu-chuan-xuat">Tiêu chuẩn</label>
+                            </div>
+                            <div class="radio-option">
+                                <input type="radio" id="loai-khac-chuan-xuat" name="loai-don-hang-xuat"
+                                    value="Khác chuẩn">
+                                <label for="loai-khac-chuan-xuat">Khác chuẩn</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="filter-group">
+                        <label class="filter-label">Từ ngày</label>
+                        <div class="date-group">
+                            <div class="date-input">
+                                <input type="date" class="filter-input" id="tu-ngay-xuat">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="filter-group">
+                        <label class="filter-label">Đến ngày</label>
+                        <div class="date-group">
+                            <div class="date-input">
+                                <input type="date" class="filter-input" id="den-ngay-xuat">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="action-buttons">
+                    <button class="btn btn-primary" id="btn-loc-xuat">
+                        <i class="fas fa-filter"></i> Lọc
+                    </button>
+                    <button class="btn btn-secondary" id="btn-reset-xuat">
+                        <i class="fas fa-redo"></i> Đặt lại
+                    </button>
+                </div>
+            </div>
+
+            <div class="results-section">
+                <div class="results-header">
+                    <div class="results-count" id="results-count-xuat"></div>
+                    <button class="export-btn" id="btn-export-xuat">
+                        <i class="fas fa-file-export"></i> Xuất Excel
+                    </button>
+                </div>
+
+                <div class="table-container-wrapper">
+                    <div id="loading-xuat" class="loading" style="display: none;">
+                        <div class="loading-spinner"></div>
+                        <p>Đang tải dữ liệu từ Google Sheets...</p>
+                    </div>
+
+                    <div id="results-container-xuat">
+                        <div class="no-results" id="no-results-xuat">
+                            <i class="fas fa-search"></i>
+                            <p>Chưa có dữ liệu. Vui lòng thiết lập bộ lọc và nhấn "Lọc".</p>
+                        </div>
+
+                        <div class="table-container">
+                            <table class="results-table" id="results-table-xuat" style="display: none;">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Hiển thị trên sổ</th>
+                                        <th>Hình thức bán hàng</th>
+                                        <th>Phương thức thanh toán</th>
+                                        <th>Kiêm phiếu xuất kho</th>
+                                        <th>XK vào khu phi thuế quan và các TH được coi như XK</th>
+                                        <th>Lập kèm hóa đơn</th>
+                                        <th>Đã lập hóa đơn</th>
+                                        <th>Ngày hạch toán (*)</th>
+                                        <th>Ngày chứng từ (*)</th>
+                                        <th>Số chứng từ (*)</th>
+                                        <th>Số phiếu xuất</th>
+                                        <th>Lý do xuất</th>
+                                        <th>Mẫu số HĐ</th>
+                                        <th>Ký hiệu HĐ</th>
+                                        <th>Số hóa đơn</th>
+                                        <th>Ngày hóa đơn</th>
+                                        <th>Mã khách hàng</th>
+                                        <th>Tên khách hàng</th>
+                                        <th>Địa chỉ</th>
+                                        <th>Mã số thuế</th>
+                                        <th>Diễn giải</th>
+                                        <th>Nộp vào TK</th>
+                                        <th>NV bán hàng</th>
+                                        <th>Loại tiền</th>
+                                        <th>Tỷ giá</th>
+                                        <th>Mã hàng (*)</th>
+                                        <th>Tên hàng</th>
+                                        <th>Hàng khuyến mại</th>
+                                        <th>TK Tiền/Chi phí/Nợ (*)</th>
+                                        <th>TK Doanh thu/Có (*)</th>
+                                        <th>ĐVT</th>
+                                        <th>Số lượng</th>
+                                        <th>Đơn giá sau thuế</th>
+                                        <th>Đơn giá</th>
+                                        <th>Thành tiền</th>
+                                        <th>Thành tiền quy đổi</th>
+                                        <th>Tỷ lệ CK (%)</th>
+                                        <th>Tiền chiết khấu</th>
+                                        <th>Tiền chiết khấu quy đổi</th>
+                                        <th>TK chiết khấu</th>
+                                        <th>Giá tính thuế XK</th>
+                                        <th>% thuế XK</th>
+                                        <th>Tiền thuế XK</th>
+                                        <th>TK thuế XK</th>
+                                        <th>% thuế GTGT</th>
+                                        <th>Tỷ lệ tính thuế (Thuế suất KHAC)</th>
+                                        <th>Tiền thuế GTGT</th>
+                                        <th>Tiền thuế GTGT quy đổi</th>
+                                        <th>TK thuế GTGT</th>
+                                        <th>HH không TH trên tờ khai thuế GTGT</th>
+                                        <th>Kho</th>
+                                        <th>TK giá vốn</th>
+                                        <th>TK Kho</th>
+                                        <th>Đơn giá vốn</th>
+                                        <th>Tiền vốn</th>
+                                        <th>Hàng hóa giữ hộ/bán hộ</th>
+                                        <th>Phí vận chuyển, lắp đặt</th>
+                                        <th>Chi phí dịch vụ sơn yêu cầu</th>
+                                        <th>Ghi chú</th>
+                                        <th>Tổng số tiền</th>
+                                        <th>Kiểu thanh toán</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="results-body-xuat">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Lệnh sản xuất Tab -->
+        <div id="lenhsanxuat-tab" class="tab-content">
+            <div class="filter-section">
+                <div class="filter-title">
+                    <i class="fas fa-sliders-h"></i> Thiết lập bộ lọc - Xuất vật tư sản xuất
+                </div>
+
+                <div class="filter-grid">
+                    <div class="filter-group">
+                        <label class="filter-label" id="ma-hop-dong-label-lsx">
+                            Mã hợp đồng -
+                            <span class="selected-count" id="ma-hop-dong-selected-lsx">
+                                Đã chọn: Tất cả
+                            </span>
+                        </label>
+
+                        <div class="multi-select-container" id="ma-hop-dong-lsx-container">
+                            <!-- Các checkbox sẽ được thêm bằng JavaScript -->
+                        </div>
+                    </div>
+
+                    <div class="filter-group">
+                        <label class="filter-label" id="don-vi-label-lsx">
+                            Đơn vị phụ trách -
+                            <span class="selected-count" id="don-vi-selected-lsx">
+                                Đã chọn: Tất cả
+                            </span>
+                        </label>
+
+                        <div class="multi-select-container" id="don-vi-phu-trach-lsx-container">
+                            <!-- Các checkbox sẽ được thêm bằng JavaScript -->
+                        </div>
+                    </div>
+
+                    <div class="filter-group">
+                        <label class="filter-label">Loại đơn hàng</label>
+                        <div class="radio-group">
+                            <div class="radio-option">
+                                <input type="radio" id="loai-tat-ca-lsx" name="loai-don-hang-lsx" value="Tất cả"
+                                    checked>
+                                <label for="loai-tat-ca-lsx">Tất cả</label>
+                            </div>
+                            <div class="radio-option">
+                                <input type="radio" id="loai-tieu-chuan-lsx" name="loai-don-hang-lsx"
+                                    value="Tiêu chuẩn">
+                                <label for="loai-tieu-chuan-lsx">Tiêu chuẩn</label>
+                            </div>
+                            <div class="radio-option">
+                                <input type="radio" id="loai-khac-chuan-lsx" name="loai-don-hang-lsx"
+                                    value="Khác chuẩn">
+                                <label for="loai-khac-chuan-lsx">Khác chuẩn</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="filter-group">
+                        <label class="filter-label">Xưởng sản xuất</label>
+                        <select class="filter-select" id="xuong-san-xuat-lsx">
+                            <option value="">Tất cả xưởng</option>
+                        </select>
+                    </div>
+
+                    <div class="filter-group">
+                        <label class="filter-label">Từ ngày</label>
+                        <div class="date-group">
+                            <div class="date-input">
+                                <input type="date" class="filter-input" id="tu-ngay-lsx">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="filter-group">
+                        <label class="filter-label">Đến ngày</label>
+                        <div class="date-group">
+                            <div class="date-input">
+                                <input type="date" class="filter-input" id="den-ngay-lsx">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="action-buttons">
+                    <button class="btn btn-primary" id="btn-loc-lsx">
+                        <i class="fas fa-filter"></i> Lọc
+                    </button>
+                    <button class="btn btn-secondary" id="btn-reset-lsx">
+                        <i class="fas fa-redo"></i> Đặt lại
+                    </button>
+                </div>
+            </div>
+
+            <div class="results-section">
+                <div class="results-header">
+                    <div class="results-count" id="results-count-lsx"></div>
+                    <button class="export-btn" id="btn-export-lsx">
+                        <i class="fas fa-file-export"></i> Xuất Excel
+                    </button>
+                </div>
+
+                <div class="table-container-wrapper">
+                    <div id="loading-lsx" class="loading" style="display: none;">
+                        <div class="loading-spinner"></div>
+                        <p>Đang tải dữ liệu từ Google Sheets...</p>
+                    </div>
+
+                    <div id="results-container-lsx">
+                        <div class="no-results" id="no-results-lsx">
+                            <i class="fas fa-search"></i>
+                            <p>Chưa có dữ liệu. Vui lòng thiết lập bộ lọc và nhấn "Lọc".</p>
+                        </div>
+
+                        <div class="table-container">
+                            <table class="results-table" id="results-table-lsx" style="display: none;">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Hiển thị trên sổ</th>
+                                        <th>Loại xuất kho</th>
+                                        <th>Ngày hạch toán (*)</th>
+                                        <th>Ngày chứng từ (*)</th>
+                                        <th>Số chứng từ (*)</th>
+                                        <th>Mẫu số HĐ</th>
+                                        <th>Ký hiệu HĐ</th>
+                                        <th>Mã đối tượng</th>
+                                        <th>Tên đối tượng</th>
+                                        <th>Địa chỉ/Bộ phận</th>
+                                        <th>Tên người nhận/Của</th>
+                                        <th>Lý do xuất/Về việc</th>
+                                        <th>Nhân viên bán hàng</th>
+                                        <th>Kèm theo</th>
+                                        <th>Số lệnh điều động</th>
+                                        <th>Ngày lệnh điều động</th>
+                                        <th>Người vận chuyển</th>
+                                        <th>Tên người vận chuyển</th>
+                                        <th>Hợp đồng số</th>
+                                        <th>Phương tiện vận chuyển</th>
+                                        <th>Xuất tại kho</th>
+                                        <th>Địa chỉ kho xuất</th>
+                                        <th>Nhập tại chi nhánh</th>
+                                        <th>Tên chi nhánh</th>
+                                        <th>MST chi nhánh</th>
+                                        <th>Nhập tại kho</th>
+                                        <th>Địa chỉ kho nhập</th>
+                                        <th>Mã hàng (*)</th>
+                                        <th>Tên hàng</th>
+                                        <th>Là hàng khuyến mại</th>
+                                        <th>Kho (*)</th>
+                                        <th>Hàng hóa giữ hộ/bán hộ</th>
+                                        <th>TK Nợ (*)</th>
+                                        <th>TK Có (*)</th>
+                                        <th>ĐVT</th>
+                                        <th>Số lượng</th>
+                                        <th>Đơn giá bán</th>
+                                        <th>Thành tiền</th>
+                                        <th>Đơn giá vốn</th>
+                                        <th>Tiền vốn</th>
+                                        <th>Số lô</th>
+                                        <th>Hạn sử dụng</th>
+                                        <th>Đối tượng</th>
+                                        <th>Khoản mục CP</th>
+                                        <th>Đơn vị</th>
+                                        <th>Đối tượng THCP</th>
+                                        <th>Công trình</th>
+                                        <th>Đơn đặt hàng</th>
+                                        <th>Hợp đồng bán</th>
+                                        <th>CP không hợp lý</th>
+                                        <th>Mã thống kê</th>
+                                        <!-- Các cột m_vt, kt_m_vt, sl_m_vt ... (từ 1 đến 20) -->
+                                        <th>m_vt_1</th>
+                                        <th>kt_m_vt_1</th>
+                                        <th>sl_m_vt_1</th>
+                                        <th>m_vt_2</th>
+                                        <th>kt_m_vt_2</th>
+                                        <th>sl_m_vt_2</th>
+                                        <th>m_vt_3</th>
+                                        <th>kt_m_vt_3</th>
+                                        <th>sl_m_vt_3</th>
+                                        <th>m_vt_4</th>
+                                        <th>kt_m_vt_4</th>
+                                        <th>sl_m_vt_4</th>
+                                        <th>m_vt_5</th>
+                                        <th>kt_m_vt_5</th>
+                                        <th>sl_m_vt_5</th>
+                                        <th>m_vt_6</th>
+                                        <th>kt_m_vt_6</th>
+                                        <th>sl_m_vt_6</th>
+                                        <th>m_vt_7</th>
+                                        <th>kt_m_vt_7</th>
+                                        <th>sl_m_vt_7</th>
+                                        <th>m_vt_8</th>
+                                        <th>kt_m_vt_8</th>
+                                        <th>sl_m_vt_8</th>
+                                        <th>m_vt_9</th>
+                                        <th>kt_m_vt_9</th>
+                                        <th>sl_m_vt_9</th>
+                                        <th>m_vt_10</th>
+                                        <th>kt_m_vt_10</th>
+                                        <th>sl_m_vt_10</th>
+                                        <th>m_vt_11</th>
+                                        <th>kt_m_vt_11</th>
+                                        <th>sl_m_vt_11</th>
+                                        <th>m_vt_12</th>
+                                        <th>kt_m_vt_12</th>
+                                        <th>sl_m_vt_12</th>
+                                        <th>m_vt_13</th>
+                                        <th>kt_m_vt_13</th>
+                                        <th>sl_m_vt_13</th>
+                                        <th>m_vt_14</th>
+                                        <th>kt_m_vt_14</th>
+                                        <th>sl_m_vt_14</th>
+                                        <th>m_vt_15</th>
+                                        <th>kt_m_vt_15</th>
+                                        <th>sl_m_vt_15</th>
+                                        <th>m_vt_16</th>
+                                        <th>kt_m_vt_16</th>
+                                        <th>sl_m_vt_16</th>
+                                        <th>m_vt_17</th>
+                                        <th>kt_m_vt_17</th>
+                                        <th>sl_m_vt_17</th>
+                                        <th>m_vt_18</th>
+                                        <th>kt_m_vt_18</th>
+                                        <th>sl_m_vt_18</th>
+                                        <th>m_vt_19</th>
+                                        <th>kt_m_vt_19</th>
+                                        <th>sl_m_vt_19</th>
+                                        <th>m_vt_20</th>
+                                        <th>kt_m_vt_20</th>
+                                        <th>sl_m_vt_20</th>
+                                        <!-- Các cột m2_vt, kt1_m2_vt, kt2_m2_vt, sl_m2_vt (1 đến 2) -->
+                                        <th>m2_vt_1</th>
+                                        <th>kt1_m2_vt_1</th>
+                                        <th>kt2_m2_vt_1</th>
+                                        <th>sl_m2_vt_1</th>
+                                        <th>m2_vt_2</th>
+                                        <th>kt1_m2_vt_2</th>
+                                        <th>kt2_m2_vt_2</th>
+                                        <th>sl_m2_vt_2</th>
+                                        <!-- Các cột c_vt, sl_c_vt (1 đến 30) -->
+                                        <th>c_vt_1</th>
+                                        <th>sl_c_vt_1</th>
+                                        <th>c_vt_2</th>
+                                        <th>sl_c_vt_2</th>
+                                        <th>c_vt_3</th>
+                                        <th>sl_c_vt_3</th>
+                                        <th>c_vt_4</th>
+                                        <th>sl_c_vt_4</th>
+                                        <th>c_vt_5</th>
+                                        <th>sl_c_vt_5</th>
+                                        <th>c_vt_6</th>
+                                        <th>sl_c_vt_6</th>
+                                        <th>c_vt_7</th>
+                                        <th>sl_c_vt_7</th>
+                                        <th>c_vt_8</th>
+                                        <th>sl_c_vt_8</th>
+                                        <th>c_vt_9</th>
+                                        <th>sl_c_vt_9</th>
+                                        <th>c_vt_10</th>
+                                        <th>sl_c_vt_10</th>
+                                        <th>c_vt_11</th>
+                                        <th>sl_c_vt_11</th>
+                                        <th>c_vt_12</th>
+                                        <th>sl_c_vt_12</th>
+                                        <th>c_vt_13</th>
+                                        <th>sl_c_vt_13</th>
+                                        <th>c_vt_14</th>
+                                        <th>sl_c_vt_14</th>
+                                        <th>c_vt_15</th>
+                                        <th>sl_c_vt_15</th>
+                                        <th>c_vt_16</th>
+                                        <th>sl_c_vt_16</th>
+                                        <th>c_vt_17</th>
+                                        <th>sl_c_vt_17</th>
+                                        <th>c_vt_18</th>
+                                        <th>sl_c_vt_18</th>
+                                        <th>c_vt_19</th>
+                                        <th>sl_c_vt_19</th>
+                                        <th>c_vt_20</th>
+                                        <th>sl_c_vt_20</th>
+                                        <th>c_vt_21</th>
+                                        <th>sl_c_vt_21</th>
+                                        <th>c_vt_22</th>
+                                        <th>sl_c_vt_22</th>
+                                        <th>c_vt_23</th>
+                                        <th>sl_c_vt_23</th>
+                                        <th>c_vt_24</th>
+                                        <th>sl_c_vt_24</th>
+                                        <th>c_vt_25</th>
+                                        <th>sl_c_vt_25</th>
+                                        <th>c_vt_26</th>
+                                        <th>sl_c_vt_26</th>
+                                        <th>c_vt_27</th>
+                                        <th>sl_c_vt_27</th>
+                                        <th>c_vt_28</th>
+                                        <th>sl_c_vt_28</th>
+                                        <th>c_vt_29</th>
+                                        <th>sl_c_vt_29</th>
+                                        <th>c_vt_30</th>
+                                        <th>sl_c_vt_30</th>
+                                        <th>Số bộ</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="results-body-lsx">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Lệnh xuất bảo hành Tab -->
+        <div id="xuatbaohanh-tab" class="tab-content">
+            <div class="filter-section">
+                <div class="filter-title">
+                    <i class="fas fa-sliders-h"></i> Thiết lập bộ lọc - Xuất vật tư bảo hành
+                </div>
+
+                <div class="filter-grid">
+                    <div class="filter-group">
+                        <label class="filter-label" id="ma-hop-dong-label-xbh">
+                            Mã hợp đồng -
+                            <span class="selected-count" id="ma-hop-dong-selected-xbh">
+                                Đã chọn: Tất cả
+                            </span>
+                        </label>
+
+                        <div class="multi-select-container" id="ma-hop-dong-xbh-container">
+                            <!-- Các checkbox sẽ được thêm bằng JavaScript -->
+                        </div>
+                    </div>
+
+                    <div class="filter-group">
+                        <label class="filter-label" id="don-vi-label-xbh">
+                            Đơn vị phụ trách -
+                            <span class="selected-count" id="don-vi-selected-xbh">
+                                Đã chọn: Tất cả
+                            </span>
+                        </label>
+                        <div class="multi-select-container" id="don-vi-phu-trach-xbh-container">
+                            <!-- Các checkbox sẽ được thêm bằng JavaScript -->
+                        </div>
+                    </div>
+
+                    <div class="filter-group">
+                        <label class="filter-label">Loại đơn hàng</label>
+                        <div class="radio-group">
+                            <div class="radio-option">
+                                <input type="radio" id="loai-tat-ca-xbh" name="loai-don-hang-xbh" value="Tất cả"
+                                    checked>
+                                <label for="loai-tat-ca-xbh">Tất cả</label>
+                            </div>
+                            <div class="radio-option">
+                                <input type="radio" id="loai-tieu-chuan-xbh" name="loai-don-hang-xbh"
+                                    value="Tiêu chuẩn">
+                                <label for="loai-tieu-chuan-xbh">Tiêu chuẩn</label>
+                            </div>
+                            <div class="radio-option">
+                                <input type="radio" id="loai-khac-chuan-xbh" name="loai-don-hang-xbh"
+                                    value="Khác chuẩn">
+                                <label for="loai-khac-chuan-xbh">Khác chuẩn</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="filter-group">
+                        <label class="filter-label">Xưởng sản xuất</label>
+                        <select class="filter-select" id="xuong-san-xuat-xbh">
+                            <option value="">Tất cả xưởng</option>
+                        </select>
+                    </div>
+
+                    <div class="filter-group">
+                        <label class="filter-label">Từ ngày</label>
+                        <div class="date-group">
+                            <div class="date-input">
+                                <input type="date" class="filter-input" id="tu-ngay-xbh">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="filter-group">
+                        <label class="filter-label">Đến ngày</label>
+                        <div class="date-group">
+                            <div class="date-input">
+                                <input type="date" class="filter-input" id="den-ngay-xbh">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="action-buttons">
+                    <button class="btn btn-primary" id="btn-loc-xbh">
+                        <i class="fas fa-filter"></i> Lọc
+                    </button>
+                    <button class="btn btn-secondary" id="btn-reset-xbh">
+                        <i class="fas fa-redo"></i> Đặt lại
+                    </button>
+                </div>
+            </div>
+
+            <div class="results-section">
+                <div class="results-header">
+                    <div class="results-count" id="results-count-xbh"></div>
+                    <button class="export-btn" id="btn-export-xbh">
+                        <i class="fas fa-file-export"></i> Xuất Excel
+                    </button>
+                </div>
+
+                <div class="table-container-wrapper">
+                    <div id="loading-xbh" class="loading" style="display: none;">
+                        <div class="loading-spinner"></div>
+                        <p>Đang tải dữ liệu từ Google Sheets...</p>
+                    </div>
+
+                    <div id="results-container-xbh">
+                        <div class="no-results" id="no-results-xbh">
+                            <i class="fas fa-search"></i>
+                            <p>Chưa có dữ liệu. Vui lòng thiết lập bộ lọc và nhấn "Lọc".</p>
+                        </div>
+
+                        <div class="table-container">
+                            <!-- Sử dụng bảng giống hệt tab lệnh sản xuất -->
+                            <table class="results-table" id="results-table-xbh" style="display: none;">
+                                <!-- Copy toàn bộ thead từ bảng lệnh sản xuất -->
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Hiển thị trên sổ</th>
+                                        <th>Loại xuất kho</th>
+                                        <th>Ngày hạch toán (*)</th>
+                                        <th>Ngày chứng từ (*)</th>
+                                        <th>Số chứng từ (*)</th>
+                                        <th>Mẫu số HĐ</th>
+                                        <th>Ký hiệu HĐ</th>
+                                        <th>Mã đối tượng</th>
+                                        <th>Tên đối tượng</th>
+                                        <th>Địa chỉ/Bộ phận</th>
+                                        <th>Tên người nhận/Của</th>
+                                        <th>Lý do xuất/Về việc</th>
+                                        <th>Nhân viên bán hàng</th>
+                                        <th>Kèm theo</th>
+                                        <th>Số lệnh điều động</th>
+                                        <th>Ngày lệnh điều động</th>
+                                        <th>Người vận chuyển</th>
+                                        <th>Tên người vận chuyển</th>
+                                        <th>Hợp đồng số</th>
+                                        <th>Phương tiện vận chuyển</th>
+                                        <th>Xuất tại kho</th>
+                                        <th>Địa chỉ kho xuất</th>
+                                        <th>Nhập tại chi nhánh</th>
+                                        <th>Tên chi nhánh</th>
+                                        <th>MST chi nhánh</th>
+                                        <th>Nhập tại kho</th>
+                                        <th>Địa chỉ kho nhập</th>
+                                        <th>Mã hàng (*)</th>
+                                        <th>Tên hàng</th>
+                                        <th>Là hàng khuyến mại</th>
+                                        <th>Kho (*)</th>
+                                        <th>Hàng hóa giữ hộ/bán hộ</th>
+                                        <th>TK Nợ (*)</th>
+                                        <th>TK Có (*)</th>
+                                        <th>ĐVT</th>
+                                        <th>Số lượng</th>
+                                        <th>Đơn giá bán</th>
+                                        <th>Thành tiền</th>
+                                        <th>Đơn giá vốn</th>
+                                        <th>Tiền vốn</th>
+                                        <th>Số lô</th>
+                                        <th>Hạn sử dụng</th>
+                                        <th>Đối tượng</th>
+                                        <th>Khoản mục CP</th>
+                                        <th>Đơn vị</th>
+                                        <th>Đối tượng THCP</th>
+                                        <th>Công trình</th>
+                                        <th>Đơn đặt hàng</th>
+                                        <th>Hợp đồng bán</th>
+                                        <th>CP không hợp lý</th>
+                                        <th>Mã thống kê</th>
+                                        <!-- Các cột m_vt, kt_m_vt, sl_m_vt ... (từ 1 đến 20) -->
+                                        <th>m_vt_1</th>
+                                        <th>kt_m_vt_1</th>
+                                        <th>sl_m_vt_1</th>
+                                        <th>m_vt_2</th>
+                                        <th>kt_m_vt_2</th>
+                                        <th>sl_m_vt_2</th>
+                                        <th>m_vt_3</th>
+                                        <th>kt_m_vt_3</th>
+                                        <th>sl_m_vt_3</th>
+                                        <th>m_vt_4</th>
+                                        <th>kt_m_vt_4</th>
+                                        <th>sl_m_vt_4</th>
+                                        <th>m_vt_5</th>
+                                        <th>kt_m_vt_5</th>
+                                        <th>sl_m_vt_5</th>
+                                        <th>m_vt_6</th>
+                                        <th>kt_m_vt_6</th>
+                                        <th>sl_m_vt_6</th>
+                                        <th>m_vt_7</th>
+                                        <th>kt_m_vt_7</th>
+                                        <th>sl_m_vt_7</th>
+                                        <th>m_vt_8</th>
+                                        <th>kt_m_vt_8</th>
+                                        <th>sl_m_vt_8</th>
+                                        <th>m_vt_9</th>
+                                        <th>kt_m_vt_9</th>
+                                        <th>sl_m_vt_9</th>
+                                        <th>m_vt_10</th>
+                                        <th>kt_m_vt_10</th>
+                                        <th>sl_m_vt_10</th>
+                                        <th>m_vt_11</th>
+                                        <th>kt_m_vt_11</th>
+                                        <th>sl_m_vt_11</th>
+                                        <th>m_vt_12</th>
+                                        <th>kt_m_vt_12</th>
+                                        <th>sl_m_vt_12</th>
+                                        <th>m_vt_13</th>
+                                        <th>kt_m_vt_13</th>
+                                        <th>sl_m_vt_13</th>
+                                        <th>m_vt_14</th>
+                                        <th>kt_m_vt_14</th>
+                                        <th>sl_m_vt_14</th>
+                                        <th>m_vt_15</th>
+                                        <th>kt_m_vt_15</th>
+                                        <th>sl_m_vt_15</th>
+                                        <th>m_vt_16</th>
+                                        <th>kt_m_vt_16</th>
+                                        <th>sl_m_vt_16</th>
+                                        <th>m_vt_17</th>
+                                        <th>kt_m_vt_17</th>
+                                        <th>sl_m_vt_17</th>
+                                        <th>m_vt_18</th>
+                                        <th>kt_m_vt_18</th>
+                                        <th>sl_m_vt_18</th>
+                                        <th>m_vt_19</th>
+                                        <th>kt_m_vt_19</th>
+                                        <th>sl_m_vt_19</th>
+                                        <th>m_vt_20</th>
+                                        <th>kt_m_vt_20</th>
+                                        <th>sl_m_vt_20</th>
+                                        <!-- Các cột m2_vt, kt1_m2_vt, kt2_m2_vt, sl_m2_vt (1 đến 2) -->
+                                        <th>m2_vt_1</th>
+                                        <th>kt1_m2_vt_1</th>
+                                        <th>kt2_m2_vt_1</th>
+                                        <th>sl_m2_vt_1</th>
+                                        <th>m2_vt_2</th>
+                                        <th>kt1_m2_vt_2</th>
+                                        <th>kt2_m2_vt_2</th>
+                                        <th>sl_m2_vt_2</th>
+                                        <!-- Các cột c_vt, sl_c_vt (1 đến 30) -->
+                                        <th>c_vt_1</th>
+                                        <th>sl_c_vt_1</th>
+                                        <th>c_vt_2</th>
+                                        <th>sl_c_vt_2</th>
+                                        <th>c_vt_3</th>
+                                        <th>sl_c_vt_3</th>
+                                        <th>c_vt_4</th>
+                                        <th>sl_c_vt_4</th>
+                                        <th>c_vt_5</th>
+                                        <th>sl_c_vt_5</th>
+                                        <th>c_vt_6</th>
+                                        <th>sl_c_vt_6</th>
+                                        <th>c_vt_7</th>
+                                        <th>sl_c_vt_7</th>
+                                        <th>c_vt_8</th>
+                                        <th>sl_c_vt_8</th>
+                                        <th>c_vt_9</th>
+                                        <th>sl_c_vt_9</th>
+                                        <th>c_vt_10</th>
+                                        <th>sl_c_vt_10</th>
+                                        <th>c_vt_11</th>
+                                        <th>sl_c_vt_11</th>
+                                        <th>c_vt_12</th>
+                                        <th>sl_c_vt_12</th>
+                                        <th>c_vt_13</th>
+                                        <th>sl_c_vt_13</th>
+                                        <th>c_vt_14</th>
+                                        <th>sl_c_vt_14</th>
+                                        <th>c_vt_15</th>
+                                        <th>sl_c_vt_15</th>
+                                        <th>c_vt_16</th>
+                                        <th>sl_c_vt_16</th>
+                                        <th>c_vt_17</th>
+                                        <th>sl_c_vt_17</th>
+                                        <th>c_vt_18</th>
+                                        <th>sl_c_vt_18</th>
+                                        <th>c_vt_19</th>
+                                        <th>sl_c_vt_19</th>
+                                        <th>c_vt_20</th>
+                                        <th>sl_c_vt_20</th>
+                                        <th>c_vt_21</th>
+                                        <th>sl_c_vt_21</th>
+                                        <th>c_vt_22</th>
+                                        <th>sl_c_vt_22</th>
+                                        <th>c_vt_23</th>
+                                        <th>sl_c_vt_23</th>
+                                        <th>c_vt_24</th>
+                                        <th>sl_c_vt_24</th>
+                                        <th>c_vt_25</th>
+                                        <th>sl_c_vt_25</th>
+                                        <th>c_vt_26</th>
+                                        <th>sl_c_vt_26</th>
+                                        <th>c_vt_27</th>
+                                        <th>sl_c_vt_27</th>
+                                        <th>c_vt_28</th>
+                                        <th>sl_c_vt_28</th>
+                                        <th>c_vt_29</th>
+                                        <th>sl_c_vt_29</th>
+                                        <th>c_vt_30</th>
+                                        <th>sl_c_vt_30</th>
+                                        <th>Số bộ</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="results-body-xbh">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>
