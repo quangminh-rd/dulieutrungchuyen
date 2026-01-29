@@ -1,4 +1,3 @@
-
 // Cấu hình API Google Sheets (chung cho cả ba tab)
 const SPREADSHEET_ID = '14R9efcJ2hGE3mCgmJqi6TNbqkm4GFe91LEAuCyCa4O0';
 const SPREADSHEET_ID_DANH_SACH_NGUOI_DUNG = '1GSakZ33O0JLrD2Mewl-EAHPBviokl8cLtI5pF1VIT6g';
@@ -1153,108 +1152,186 @@ function displayResultsKhachHang(results) {
     });
 }
 
-function exportToExcelKhachHang() {
+async function exportToExcelKhachHang() {
     if (filteredResultsKhachHang.length === 0) {
         showMessageKhachHang('Không có dữ liệu để xuất. Vui lòng thực hiện lọc trước.', 'error');
         return;
     }
 
-    let csvContent = "\uFEFF";
-    csvContent += "ID,Là tổ chức/cá nhân,Là nhà cung cấp,Mã khách hàng (*),Tên khách hàng (*),Địa chỉ,Mã số thuế,Điện thoại,Điện thoại di động,Fax,Email,Website,Nhóm KH/NCC,Số CMND,Ngày cấp,Nơi cấp,Xưng hô,Họ và tên NLH,Chức danh NLH,Địa chỉ người liên hệ,ĐT di động NLH,ĐT di động khác của NLH,ĐT cố định NLH,Email người liên hệ,Số tài khoản,Tên ngân hàng,Chi nhánh,Tỉnh/TP TK ngân hàng,Ngày phát sinh\n";
+    try {
+        // Thay vì tải template, tạo workbook mới
+        const workbook = new ExcelJS.Workbook();
+        const worksheet = workbook.addWorksheet('Danh sách khách hàng');
 
-    filteredResultsKhachHang.forEach(result => {
-        const row = result.row;
-        const columnIndex = result.columnIndex;
+        // Thêm tiêu đề cột
+        worksheet.addRow([
+            'ID', 'Là tổ chức/cá nhân', 'Là nhà cung cấp', 'Mã khách hàng (*)',
+            'Tên khách hàng (*)', 'Địa chỉ', 'Mã số thuế', 'Điện thoại',
+            'Điện thoại di động', 'Fax', 'Email', 'Website', 'Nhóm KH/NCC',
+            'Số CMND', 'Ngày cấp', 'Nơi cấp', 'Xưng hô', 'Họ và tên NLH',
+            'Chức danh NLH', 'Địa chỉ người liên hệ', 'ĐT di động NLH',
+            'ĐT di động khác của NLH', 'ĐT cố định NLH', 'Email người liên hệ',
+            'Số tài khoản', 'Tên ngân hàng', 'Chi nhánh', 'Tỉnh/TP TK ngân hàng',
+            'Ngày phát sinh'
+        ]);
 
-        const id = row[columnIndex['id']] || '';
-        const loaiKhachHang = row[columnIndex['loai_khach_hang']] || '';
-        const maKhachHang = row[columnIndex['ma_khach_hang']] || '';
-        const tenNguoiLienHe = row[columnIndex['ten_nguoi_lien_he']] || '';
-        const diaChiChiTiet = row[columnIndex['dia_chi_chi_tiet']] || '';
-        const maSoThue = row[columnIndex['ma_so_thue']] || '';
-        const sdtCoDinh = row[columnIndex['sdt_co_dinh']] || '';
-        const sdtT1 = row[columnIndex['sdt_t1']] || '';
-        const sdtT2 = row[columnIndex['sdt_t2']] || '';
-        const fax = row[columnIndex['fax']] || '';
-        const emailKhachHang = row[columnIndex['email_khach_hang']] || '';
-        const donViPhuTrach = row[columnIndex['don_vi_phu_trach']] || '';
-        const ngayPhatSinh = row[columnIndex['ngay_phat_sinh']] || '';
-
-        // Các cột bổ sung
-        const soCmnd = row[columnIndex['so_cmnd']] || '';
-        const ngayCap = row[columnIndex['ngay_cap']] || '';
-        const noiCap = row[columnIndex['noi_cap']] || '';
-        const xungHo = row[columnIndex['xung_ho']] || '';
-        const hoTenNlh = row[columnIndex['ho_ten_nlh']] || '';
-        const chucDanhNlh = row[columnIndex['chuc_danh_nlh']] || '';
-        const diaChiNlh = row[columnIndex['dia_chi_nlh']] || '';
-        const dtDiDongNlh = row[columnIndex['dt_di_dong_nlh']] || '';
-        const dtDiDongKhacNlh = row[columnIndex['dt_di_dong_khac_nlh']] || '';
-        const dtCoDinhNlh = row[columnIndex['dt_co_dinh_nlh']] || '';
-        const emailNlh = row[columnIndex['email_nlh']] || '';
-        const soTaiKhoan = row[columnIndex['so_tai_khoan']] || '';
-        const tenNganHang = row[columnIndex['ten_ngan_hang']] || '';
-        const chiNhanh = row[columnIndex['chi_nhanh']] || '';
-        const tinhTpNganHang = row[columnIndex['tinh_tp_ngan_hang']] || '';
-
-        // Xử lý cột "Là tổ chức/cá nhân"
-        let laToChucCaNhan = '';
-        if (loaiKhachHang === "Tổ chức") {
-            laToChucCaNhan = "0";
-        } else if (loaiKhachHang === "Cá nhân") {
-            laToChucCaNhan = "1";
-        }
-
-        // Xử lý cột "Điện thoại di động"
-        let dienThoaiDiDong = '';
-        if (sdtT1 && sdtT2) {
-            dienThoaiDiDong = `${sdtT1}/${sdtT2}`;
-        } else if (sdtT1) {
-            dienThoaiDiDong = sdtT1;
-        } else if (sdtT2) {
-            dienThoaiDiDong = sdtT2;
-        }
-
-        // Xử lý cột "Nhóm KH/NCC"
-        let nhomKhNcc = '';
-        if (donViPhuTrach === "BP. BH1" || donViPhuTrach === "BP. BH2") {
-            const ma12 = maKhachHang.substring(0, 12);
-            const ma9 = maKhachHang.substring(0, 9);
-            const ma6 = maKhachHang.substring(0, 6);
-            const ma2 = maKhachHang.substring(0, 2);
-            const ma1 = maKhachHang.substring(0, 1);
-            nhomKhNcc = `${ma12};${ma9};${ma6};${ma2};${ma1}`;
-        }
-
-        const escapeCSV = (str) => {
-            if (!str) return '';
-            if (str.includes(',') || str.includes('"') || str.includes('\n')) {
-                return '"' + str.replace(/"/g, '""') + '"';
-            }
-            return str;
+        // Định dạng tiêu đề
+        worksheet.getRow(1).font = { bold: true };
+        worksheet.getRow(1).fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: 'FFE0E0E0' }
         };
 
-        csvContent += `${escapeCSV(id)},${laToChucCaNhan},0,${escapeCSV(maKhachHang)},${escapeCSV(tenNguoiLienHe)},${escapeCSV(diaChiChiTiet)},${escapeCSV(maSoThue)},${escapeCSV(sdtCoDinh)},${escapeCSV(dienThoaiDiDong)},${escapeCSV(fax)},${escapeCSV(emailKhachHang)},,${escapeCSV(nhomKhNcc)},${escapeCSV(soCmnd)},${escapeCSV(ngayCap)},${escapeCSV(noiCap)},${escapeCSV(xungHo)},${escapeCSV(hoTenNlh)},${escapeCSV(chucDanhNlh)},${escapeCSV(diaChiNlh)},${escapeCSV(dtDiDongNlh)},${escapeCSV(dtDiDongKhacNlh)},${escapeCSV(dtCoDinhNlh)},${escapeCSV(emailNlh)},${escapeCSV(soTaiKhoan)},${escapeCSV(tenNganHang)},${escapeCSV(chiNhanh)},${escapeCSV(tinhTpNganHang)},${escapeCSV(ngayPhatSinh)}\n`;
-    });
+        // 2. Thêm tiêu đề báo cáo (tùy chọn)
+        const tuNgayRaw = document.getElementById("tu-ngay-kh").value;
+        const denNgayRaw = document.getElementById("den-ngay-kh").value;
+        const tuNgay = formatDateForFilename(tuNgayRaw);
+        const denNgay = formatDateForFilename(denNgayRaw);
 
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement("a");
-    const url = URL.createObjectURL(blob);
+        // Có thể thêm tiêu đề ở dòng 1 (nếu template để trống)
+        // worksheet.getCell('A1').value = `DANH SÁCH KHÁCH HÀNG`;
+        // worksheet.getCell('A2').value = `Từ ngày: ${tuNgay} - Đến ngày: ${denNgay}`;
+        // worksheet.getCell('A3').value = `Tổng số: ${filteredResultsKhachHang.length} khách hàng`;
 
-    link.setAttribute("href", url);
-    const tuNgayRaw = document.getElementById("tu-ngay-kh").value;
-    const denNgayRaw = document.getElementById("den-ngay-kh").value;
-    const tuNgay = formatDateForFilename(tuNgayRaw);
-    const denNgay = formatDateForFilename(denNgayRaw);
-    const fileName = `Danh sách khách hàng - ${tuNgay} - ${denNgay}.csv`;
+        // 3. Xác định dòng bắt đầu điền dữ liệu
+        // Giả sử dữ liệu bắt đầu từ dòng 2 (dòng 1 là tiêu đề)
+        let startRow = 2;
 
-    link.setAttribute("download", fileName);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+        // 4. Điền dữ liệu từng dòng
+        filteredResultsKhachHang.forEach((result, index) => {
+            const row = result.row;
+            const columnIndex = result.columnIndex;
 
-    showMessageKhachHang(`Đã xuất ${filteredResultsKhachHang.length} dòng ra file Excel.`, 'success');
+            const id = row[columnIndex['id']] || '';
+            const loaiKhachHang = row[columnIndex['loai_khach_hang']] || '';
+            const maKhachHang = row[columnIndex['ma_khach_hang']] || '';
+            const tenNguoiLienHe = row[columnIndex['ten_nguoi_lien_he']] || '';
+            const diaChiChiTiet = row[columnIndex['dia_chi_chi_tiet']] || '';
+            const maSoThue = row[columnIndex['ma_so_thue']] || '';
+            const sdtCoDinh = row[columnIndex['sdt_co_dinh']] || '';
+            const sdtT1 = row[columnIndex['sdt_t1']] || '';
+            const sdtT2 = row[columnIndex['sdt_t2']] || '';
+            const fax = row[columnIndex['fax']] || '';
+            const emailKhachHang = row[columnIndex['email_khach_hang']] || '';
+            const donViPhuTrach = row[columnIndex['don_vi_phu_trach']] || '';
+            const ngayPhatSinh = row[columnIndex['ngay_phat_sinh']] || '';
+
+            // Các cột bổ sung
+            const soCmnd = row[columnIndex['so_cmnd']] || '';
+            const ngayCap = row[columnIndex['ngay_cap']] || '';
+            const noiCap = row[columnIndex['noi_cap']] || '';
+            const xungHo = row[columnIndex['xung_ho']] || '';
+            const hoTenNlh = row[columnIndex['ho_ten_nlh']] || '';
+            const chucDanhNlh = row[columnIndex['chuc_danh_nlh']] || '';
+            const diaChiNlh = row[columnIndex['dia_chi_nlh']] || '';
+            const dtDiDongNlh = row[columnIndex['dt_di_dong_nlh']] || '';
+            const dtDiDongKhacNlh = row[columnIndex['dt_di_dong_khac_nlh']] || '';
+            const dtCoDinhNlh = row[columnIndex['dt_co_dinh_nlh']] || '';
+            const emailNlh = row[columnIndex['email_nlh']] || '';
+            const soTaiKhoan = row[columnIndex['so_tai_khoan']] || '';
+            const tenNganHang = row[columnIndex['ten_ngan_hang']] || '';
+            const chiNhanh = row[columnIndex['chi_nhanh']] || '';
+            const tinhTpNganHang = row[columnIndex['tinh_tp_ngan_hang']] || '';
+
+            // Xử lý cột "Là tổ chức/cá nhân"
+            let laToChucCaNhan = '';
+            if (loaiKhachHang === "Tổ chức") {
+                laToChucCaNhan = "0";
+            } else if (loaiKhachHang === "Cá nhân") {
+                laToChucCaNhan = "1";
+            }
+
+            // Xử lý cột "Điện thoại di động"
+            let dienThoaiDiDong = '';
+            if (sdtT1 && sdtT2) {
+                dienThoaiDiDong = `${sdtT1}/${sdtT2}`;
+            } else if (sdtT1) {
+                dienThoaiDiDong = sdtT1;
+            } else if (sdtT2) {
+                dienThoaiDiDong = sdtT2;
+            }
+
+            // Xử lý cột "Nhóm KH/NCC"
+            let nhomKhNcc = '';
+            if (donViPhuTrach === "BP. BH1" || donViPhuTrach === "BP. BH2") {
+                const ma12 = maKhachHang.substring(0, 12);
+                const ma9 = maKhachHang.substring(0, 9);
+                const ma6 = maKhachHang.substring(0, 6);
+                const ma2 = maKhachHang.substring(0, 2);
+                const ma1 = maKhachHang.substring(0, 1);
+                nhomKhNcc = `${ma12};${ma9};${ma6};${ma2};${ma1}`;
+            }
+
+            // Điền dữ liệu vào Excel
+            const currentRow = startRow + index;
+
+            // Cột A -> AC (29 cột)
+            worksheet.getCell(`A${currentRow}`).value = id;
+            worksheet.getCell(`B${currentRow}`).value = laToChucCaNhan;
+            worksheet.getCell(`C${currentRow}`).value = 0; // Luôn là 0 (Là nhà cung cấp)
+            worksheet.getCell(`D${currentRow}`).value = maKhachHang;
+            worksheet.getCell(`E${currentRow}`).value = tenNguoiLienHe;
+            worksheet.getCell(`F${currentRow}`).value = diaChiChiTiet;
+            worksheet.getCell(`G${currentRow}`).value = maSoThue;
+            worksheet.getCell(`H${currentRow}`).value = sdtCoDinh;
+            worksheet.getCell(`I${currentRow}`).value = dienThoaiDiDong;
+            worksheet.getCell(`J${currentRow}`).value = fax;
+            worksheet.getCell(`K${currentRow}`).value = emailKhachHang;
+            worksheet.getCell(`L${currentRow}`).value = ""; // Website (để trống)
+            worksheet.getCell(`M${currentRow}`).value = nhomKhNcc;
+            worksheet.getCell(`N${currentRow}`).value = soCmnd;
+            worksheet.getCell(`O${currentRow}`).value = ngayCap;
+            worksheet.getCell(`P${currentRow}`).value = noiCap;
+            worksheet.getCell(`Q${currentRow}`).value = xungHo;
+            worksheet.getCell(`R${currentRow}`).value = hoTenNlh;
+            worksheet.getCell(`S${currentRow}`).value = chucDanhNlh;
+            worksheet.getCell(`T${currentRow}`).value = diaChiNlh;
+            worksheet.getCell(`U${currentRow}`).value = dtDiDongNlh;
+            worksheet.getCell(`V${currentRow}`).value = dtDiDongKhacNlh;
+            worksheet.getCell(`W${currentRow}`).value = dtCoDinhNlh;
+            worksheet.getCell(`X${currentRow}`).value = emailNlh;
+            worksheet.getCell(`Y${currentRow}`).value = soTaiKhoan;
+            worksheet.getCell(`Z${currentRow}`).value = tenNganHang;
+            worksheet.getCell(`AA${currentRow}`).value = chiNhanh;
+            worksheet.getCell(`AB${currentRow}`).value = tinhTpNganHang;
+            worksheet.getCell(`AC${currentRow}`).value = ngayPhatSinh;
+
+            // Định dạng số (nếu cần)
+            // worksheet.getCell(`Y${currentRow}`).numFmt = '#,##0';
+        });
+
+        // 5. Tự động điều chỉnh độ rộng cột
+        worksheet.columns.forEach(column => {
+            let maxLength = 0;
+            column.eachCell({ includeEmpty: true }, cell => {
+                const cellLength = cell.value ? cell.value.toString().length : 10;
+                if (cellLength > maxLength) {
+                    maxLength = cellLength;
+                }
+            });
+            column.width = maxLength < 10 ? 10 : maxLength + 2;
+        });
+
+        // 6. Tạo tên file và tải về
+        const outputBuffer = await workbook.xlsx.writeBuffer();
+        const blob = new Blob([outputBuffer], {
+            type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        });
+
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        const fileName = `Danh sách khách hàng - ${tuNgay} - ${denNgay}.xlsx`;
+        link.download = fileName;
+        link.click();
+
+        // 7. Hiển thị thông báo thành công
+        showMessageKhachHang(`Đã xuất ${filteredResultsKhachHang.length} dòng ra file Excel.`, 'success');
+
+    } catch (error) {
+        console.error('Lỗi xuất Excel:', error);
+        showMessageKhachHang('Không thể xuất Excel. Vui lòng thử lại.', 'error');
+    }
 }
 
 function showLoadingKhachHang(show) {
@@ -1672,94 +1749,167 @@ function displayResultsNhap(results) {
     });
 }
 
-function exportToExcelNhap() {
+async function exportToExcelNhap() {
     if (filteredResultsNhap.length === 0) {
         showMessageNhap('Không có dữ liệu để xuất. Vui lòng thực hiện lọc trước.', 'error');
         return;
     }
 
-    let csvContent = "\uFEFF";
-    csvContent += "ID,Hiển thị trên sổ,Loại nhập kho,Ngày hạch toán (*),Ngày chứng từ (*),Số chứng từ (*),Mã đối tượng,Tên đối tượng,Người giao hàng,Diễn giải,Nhân viên bán hàng,Kèm theo,Loại tiền,Tỷ giá,Mã hàng (*),Tên hàng,Kho (*),Hàng hóa giữ hộ/bán hộ,TK Nợ (*),TK Có (*),ĐVT,Số lượng,Đơn giá,Thành tiền,Thành tiền quy đổi,Số lô,Hạn sử dụng,Khoản mục CP,Đơn vị,Đối tượng THCP,Công trình,Đơn đặt hàng,Hợp đồng bán,Mã thống kê\n";
+    try {
+        // Tạo workbook mới
+        const workbook = new ExcelJS.Workbook();
+        const worksheet = workbook.addWorksheet('Danh sách nhập kho');
 
-    filteredResultsNhap.forEach(result => {
-        const chiTietRow = result.chiTietRow;
-        const donHangRow = result.donHangRow;
-        const chiTietColumnIndex = result.chiTietColumnIndex;
-        const donHangColumnIndex = result.donHangColumnIndex;
+        // Thêm tiêu đề cột
+        const headers = [
+            'ID', 'Hiển thị trên sổ', 'Loại nhập kho', 'Ngày hạch toán (*)',
+            'Ngày chứng từ (*)', 'Số chứng từ (*)', 'Mã đối tượng', 'Tên đối tượng',
+            'Người giao hàng', 'Diễn giải', 'Nhân viên bán hàng', 'Kèm theo',
+            'Loại tiền', 'Tỷ giá', 'Mã hàng (*)', 'Tên hàng', 'Kho (*)',
+            'Hàng hóa giữ hộ/bán hộ', 'TK Nợ (*)', 'TK Có (*)', 'ĐVT',
+            'Số lượng', 'Đơn giá', 'Thành tiền', 'Thành tiền quy đổi',
+            'Số lô', 'Hạn sử dụng', 'Khoản mục CP', 'Đơn vị', 'Đối tượng THCP',
+            'Công trình', 'Đơn đặt hàng', 'Hợp đồng bán', 'Mã thống kê'
+        ];
 
-        const maDonHangID = chiTietRow[chiTietColumnIndex['ma_don_hang_id']] || '';
-        const maSanPhamTheoDoi = chiTietRow[chiTietColumnIndex['ma_san_pham_theo_doi']] || '';
-        const dienGiai = chiTietRow[chiTietColumnIndex['dien_giai']] || '';
-        const ghiChu = chiTietRow[chiTietColumnIndex['ghi_chu']] || '';
-        const dvt = chiTietRow[chiTietColumnIndex['dvt']] || '';
-        const khoiLuong = formatNumberForCSV(chiTietRow[chiTietColumnIndex['khoi_luong']] || '');
-        const donGiaNPP = formatNumberForCSV(chiTietRow[chiTietColumnIndex['don_gia_npp']] || '');
-        const giaBanNPP = formatNumberForCSV(chiTietRow[chiTietColumnIndex['gia_ban_npp']] || '');
+        worksheet.addRow(headers);
 
-        const loaiDonHang = donHangRow[donHangColumnIndex['loai_don_hang']] || '';
-        const ngayGiaoHang = donHangRow[donHangColumnIndex['ngay_giao_hang']] || '';
-        const ngayNhapKho = donHangRow[donHangColumnIndex['ngay_nhap_kho']] || '';
-        const xuongSanXuat = donHangRow[donHangColumnIndex['xuong_san_xuat']] || '';
-        const maHopDong = donHangRow[donHangColumnIndex['ma_hop_dong']] || '';
-
-        let ngayHaChToan = '';
-        let ngayChungTu = '';
-
-        if (loaiDonHang === "Yêu cầu kiểm tra") {
-            ngayHaChToan = ngayGiaoHang;
-            ngayChungTu = ngayGiaoHang;
-        } else {
-            ngayHaChToan = ngayNhapKho;
-            ngayChungTu = ngayNhapKho;
-        }
-
-        let kho = '';
-        if (xuongSanXuat === "Hà Nội") {
-            kho = "K09.TP.CUA.HN";
-        } else if (xuongSanXuat === "Long An") {
-            kho = "K10.TP.CUA.LA";
-        }
-
-        let tenHang = '';
-        if (dienGiai !== "") {
-            tenHang = dienGiai;
-        } else {
-            tenHang = ghiChu;
-        }
-
-        const thongTinCongTrinh = calculateThongTinCongTrinh(donHangRow, donHangColumnIndex);
-        const mnvCongTy = calculateMnvCongTy(donHangRow, donHangColumnIndex);
-
-        const escapeCSV = (str) => {
-            if (!str) return '';
-            if (str.includes(',') || str.includes('"') || str.includes('\n')) {
-                return '"' + str.replace(/"/g, '""') + '"';
-            }
-            return str;
+        // Định dạng tiêu đề
+        const headerRow = worksheet.getRow(1);
+        headerRow.font = { bold: true };
+        headerRow.fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: 'FFE0E0E0' }
         };
 
-        csvContent += `${maDonHangID},,0,${escapeCSV(ngayHaChToan)},${escapeCSV(ngayChungTu)},,,,,${escapeCSV(thongTinCongTrinh)},${escapeCSV(mnvCongTy)},,VND,,${escapeCSV(maSanPhamTheoDoi)},${escapeCSV(tenHang)},${escapeCSV(kho)},,155,154,${escapeCSV(dvt)},${khoiLuong},${donGiaNPP},${giaBanNPP},,,,,,${escapeCSV(maSanPhamTheoDoi)},,${escapeCSV(maHopDong)},,\n`;
-    });
+        // Điền dữ liệu
+        filteredResultsNhap.forEach((result, index) => {
+            const chiTietRow = result.chiTietRow;
+            const donHangRow = result.donHangRow;
+            const chiTietColumnIndex = result.chiTietColumnIndex;
+            const donHangColumnIndex = result.donHangColumnIndex;
 
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement("a");
-    const url = URL.createObjectURL(blob);
+            const maDonHangID = chiTietRow[chiTietColumnIndex['ma_don_hang_id']] || '';
+            const maSanPhamTheoDoi = chiTietRow[chiTietColumnIndex['ma_san_pham_theo_doi']] || '';
+            const dienGiai = chiTietRow[chiTietColumnIndex['dien_giai']] || '';
+            const ghiChu = chiTietRow[chiTietColumnIndex['ghi_chu']] || '';
+            const dvt = chiTietRow[chiTietColumnIndex['dvt']] || '';
+            const khoiLuong = formatNumberForCSV(chiTietRow[chiTietColumnIndex['khoi_luong']] || '');
+            const donGiaNPP = formatNumberForCSV(chiTietRow[chiTietColumnIndex['don_gia_npp']] || '');
+            const giaBanNPP = formatNumberForCSV(chiTietRow[chiTietColumnIndex['gia_ban_npp']] || '');
 
-    link.setAttribute("href", url);
-    const tuNgayRaw = document.getElementById("tu-ngay-nhap").value;
-    const denNgayRaw = document.getElementById("den-ngay-nhap").value;
-    const tuNgay = formatDateForFilename(tuNgayRaw);
-    const denNgay = formatDateForFilename(denNgayRaw);
-    const loaiDonHang = document.querySelector('input[name="loai-don-hang-nhap"]:checked').value;
-    const fileName = `Danh sách nhập kho - ${tuNgay} - ${denNgay} - ${loaiDonHang}.csv`;
+            const loaiDonHang = donHangRow[donHangColumnIndex['loai_don_hang']] || '';
+            const ngayGiaoHang = donHangRow[donHangColumnIndex['ngay_giao_hang']] || '';
+            const ngayNhapKho = donHangRow[donHangColumnIndex['ngay_nhap_kho']] || '';
+            const xuongSanXuat = donHangRow[donHangColumnIndex['xuong_san_xuat']] || '';
+            const maHopDong = donHangRow[donHangColumnIndex['ma_hop_dong']] || '';
 
-    link.setAttribute("download", fileName);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+            let ngayHaChToan = '';
+            let ngayChungTu = '';
 
-    showMessageNhap(`Đã xuất ${filteredResultsNhap.length} dòng ra file Excel.`, 'success');
+            if (loaiDonHang === "Yêu cầu kiểm tra") {
+                ngayHaChToan = ngayGiaoHang;
+                ngayChungTu = ngayGiaoHang;
+            } else {
+                ngayHaChToan = ngayNhapKho;
+                ngayChungTu = ngayNhapKho;
+            }
+
+            let kho = '';
+            if (xuongSanXuat === "Hà Nội") {
+                kho = "K09.TP.CUA.HN";
+            } else if (xuongSanXuat === "Long An") {
+                kho = "K10.TP.CUA.LA";
+            }
+
+            let tenHang = '';
+            if (dienGiai !== "") {
+                tenHang = dienGiai;
+            } else {
+                tenHang = ghiChu;
+            }
+
+            const thongTinCongTrinh = calculateThongTinCongTrinh(donHangRow, donHangColumnIndex);
+            const mnvCongTy = calculateMnvCongTy(donHangRow, donHangColumnIndex);
+
+            // Tạo dòng dữ liệu
+            const rowData = [
+                maDonHangID, // ID
+                '', // Hiển thị trên sổ
+                0, // Loại nhập kho
+                ngayHaChToan, // Ngày hạch toán
+                ngayChungTu, // Ngày chứng từ
+                '', // Số chứng từ
+                '', // Mã đối tượng
+                '', // Tên đối tượng
+                '', // Người giao hàng
+                thongTinCongTrinh, // Diễn giải
+                mnvCongTy, // Nhân viên bán hàng
+                '', // Kèm theo
+                'VND', // Loại tiền
+                '', // Tỷ giá
+                maSanPhamTheoDoi, // Mã hàng
+                tenHang, // Tên hàng
+                kho, // Kho
+                '', // Hàng hóa giữ hộ/bán hộ
+                155, // TK Nợ
+                154, // TK Có
+                dvt, // ĐVT
+                khoiLuong, // Số lượng
+                donGiaNPP, // Đơn giá
+                giaBanNPP, // Thành tiền
+                '', // Thành tiền quy đổi
+                '', // Số lô
+                '', // Hạn sử dụng
+                '', // Khoản mục CP
+                '', // Đơn vị
+                maSanPhamTheoDoi, // Đối tượng THCP
+                '', // Công trình
+                maHopDong, // Đơn đặt hàng
+                '', // Hợp đồng bán
+                '' // Mã thống kê
+            ];
+
+            worksheet.addRow(rowData);
+        });
+
+        // Tự động điều chỉnh độ rộng cột
+        worksheet.columns.forEach(column => {
+            let maxLength = 0;
+            column.eachCell({ includeEmpty: true }, cell => {
+                const cellLength = cell.value ? cell.value.toString().length : 10;
+                if (cellLength > maxLength) {
+                    maxLength = cellLength;
+                }
+            });
+            column.width = maxLength < 10 ? 10 : maxLength + 2;
+        });
+
+        // Tạo tên file và tải về
+        const tuNgayRaw = document.getElementById("tu-ngay-nhap").value;
+        const denNgayRaw = document.getElementById("den-ngay-nhap").value;
+        const tuNgay = formatDateForFilename(tuNgayRaw);
+        const denNgay = formatDateForFilename(denNgayRaw);
+        const loaiDonHang = document.querySelector('input[name="loai-don-hang-nhap"]:checked').value;
+
+        const outputBuffer = await workbook.xlsx.writeBuffer();
+        const blob = new Blob([outputBuffer], {
+            type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        });
+
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        const fileName = `Danh sách nhập kho - ${tuNgay} - ${denNgay} - ${loaiDonHang}.xlsx`;
+        link.download = fileName;
+        link.click();
+
+        showMessageNhap(`Đã xuất ${filteredResultsNhap.length} dòng ra file Excel.`, 'success');
+
+    } catch (error) {
+        console.error('Lỗi xuất Excel:', error);
+        showMessageNhap('Không thể xuất Excel. Vui lòng thử lại.', 'error');
+    }
 }
 
 function showLoadingNhap(show) {
@@ -2052,7 +2202,7 @@ function displayResultsXuat(results) {
         const maHopDong = donHangRow[donHangColumnIndex['ma_hop_dong']] || '';
         const donViPhuTrach = donHangRow[donHangColumnIndex['don_vi_phu_trach']] || '';
         const maNhanVien = donHangRow[donHangColumnIndex['ma_nhan_vien']] || '';
-        const maKhachHangID = donHangRow[donHangColumnIndex['ma_khach_hang_id']] || '';
+        const maKhachHangID = donHangRow[donHangColumnIndex['ma_khach_hang']] || '';
         const tenNguoiLienHe = donHangRow[donHangColumnIndex['ten_nguoi_lien_he']] || '';
         const diaChi = donHangRow[donHangColumnIndex['dia_chi']] || '';
         const diaChiChiTiet = donHangRow[donHangColumnIndex['dia_chi_chi_tiet']] || '';
@@ -2082,7 +2232,7 @@ function displayResultsXuat(results) {
             tenKhachHang = donViPhuTrach;
             diaChiHienThi = diaChi;
         } else {
-            maKhachHang = maKhachHangID;
+            maKhachHang = lookupKhachHangById[maKhachHangID];
             tenKhachHang = tenNguoiLienHe;
             diaChiHienThi = diaChiChiTiet;
         }
@@ -2182,133 +2332,241 @@ function displayResultsXuat(results) {
     });
 }
 
-function exportToExcelXuat() {
+async function exportToExcelXuat() {
     if (filteredResultsXuat.length === 0) {
         showMessageXuat('Không có dữ liệu để xuất. Vui lòng thực hiện lọc trước.', 'error');
         return;
     }
 
-    let csvContent = "\uFEFF";
-    csvContent += "ID,Hiển thị trên sổ,Hình thức bán hàng,Phương thức thanh toán,Kiêm phiếu xuất kho,XK vào khu phi thuế quan và các TH được coi như XK,Lập kèm hóa đơn,Đã lập hóa đơn,Ngày hạch toán (*),Ngày chứng từ (*),Số chứng từ (*),Số phiếu xuất,Lý do xuất,Mẫu số HĐ,Ký hiệu HĐ,Số hóa đơn,Ngày hóa đơn,Mã khách hàng,Tên khách hàng,Địa chỉ,Mã số thuế,Diễn giải,Nộp vào TK,NV bán hàng,Loại tiền,Tỷ giá,Mã hàng (*),Tên hàng,Hàng khuyến mại,TK Tiền/Chi phí/Nợ (*),TK Doanh thu/Có (*),ĐVT,Số lượng,Đơn giá sau thuế,Đơn giá,Thành tiền,Thành tiền quy đổi,Tỷ lệ CK (%),Tiền chiết khấu,Tiền chiết khấu quy đổi,TK chiết khấu,Giá tính thuế XK,% thuế XK,Tiền thuế XK,TK thuế XK,% thuế GTGT,Tỷ lệ tính thuế (Thuế suất KHAC),Tiền thuế GTGT,Tiền thuế GTGT quy đổi,TK thuế GTGT,HH không TH trên tờ khai thuế GTGT,Kho,TK giá vốn,TK Kho,Đơn giá vốn,Tiền vốn,Hàng hóa giữ hộ/bán hộ,Phí vận chuyển lắp đặt,Chi phí dịch vụ sơn yêu cầu,Ghi chú,Tổng số tiền,Kiểu thanh toán\n";
+    try {
+        // Tạo workbook mới
+        const workbook = new ExcelJS.Workbook();
+        const worksheet = workbook.addWorksheet('Danh sách xuất kho');
 
-    filteredResultsXuat.forEach(result => {
-        const chiTietRow = result.chiTietRow;
-        const donHangRow = result.donHangRow;
-        const chiTietColumnIndex = result.chiTietColumnIndex;
-        const donHangColumnIndex = result.donHangColumnIndex;
+        // Thêm tiêu đề cột (theo header CSV cũ)
+        const headers = [
+            'ID', 'Hiển thị trên sổ', 'Hình thức bán hàng', 'Phương thức thanh toán',
+            'Kiêm phiếu xuất kho', 'XK vào khu phi thuế quan và các TH được coi như XK',
+            'Lập kèm hóa đơn', 'Đã lập hóa đơn', 'Ngày hạch toán (*)', 'Ngày chứng từ (*)',
+            'Số chứng từ (*)', 'Số phiếu xuất', 'Lý do xuất', 'Mẫu số HĐ', 'Ký hiệu HĐ',
+            'Số hóa đơn', 'Ngày hóa đơn', 'Mã khách hàng', 'Tên khách hàng', 'Địa chỉ',
+            'Mã số thuế', 'Diễn giải', 'Nộp vào TK', 'NV bán hàng', 'Loại tiền', 'Tỷ giá',
+            'Mã hàng (*)', 'Tên hàng', 'Hàng khuyến mại', 'TK Tiền/Chi phí/Nợ (*)',
+            'TK Doanh thu/Có (*)', 'ĐVT', 'Số lượng', 'Đơn giá sau thuế', 'Đơn giá',
+            'Thành tiền', 'Thành tiền quy đổi', 'Tỷ lệ CK (%)', 'Tiền chiết khấu',
+            'Tiền chiết khấu quy đổi', 'TK chiết khấu', 'Giá tính thuế XK', '% thuế XK',
+            'Tiền thuế XK', 'TK thuế XK', '% thuế GTGT', 'Tỷ lệ tính thuế (Thuế suất KHAC)',
+            'Tiền thuế GTGT', 'Tiền thuế GTGT quy đổi', 'TK thuế GTGT',
+            'HH không TH trên tờ khai thuế GTGT', 'Kho', 'TK giá vốn', 'TK Kho',
+            'Đơn giá vốn', 'Tiền vốn', 'Hàng hóa giữ hộ/bán hộ', 'Phí vận chuyển lắp đặt',
+            'Chi phí dịch vụ sơn yêu cầu', 'Ghi chú', 'Tổng số tiền', 'Kiểu thanh toán'
+        ];
 
-        const maDonHangID = chiTietRow[chiTietColumnIndex['ma_don_hang_id']] || '';
-        const maSanPhamTheoDoi = chiTietRow[chiTietColumnIndex['ma_san_pham_theo_doi']] || '';
-        const dienGiai = chiTietRow[chiTietColumnIndex['dien_giai']] || '';
-        const ghiChu = chiTietRow[chiTietColumnIndex['ghi_chu']] || '';
-        const dvt = chiTietRow[chiTietColumnIndex['dvt']] || '';
-        const khoiLuong = formatNumberForCSV(chiTietRow[chiTietColumnIndex['khoi_luong']] || '');
-        const donGiaNPP = formatNumberForCSV(chiTietRow[chiTietColumnIndex['don_gia_npp']] || '');
-        const giaBanNPP = formatNumberForCSV(chiTietRow[chiTietColumnIndex['gia_ban_npp']] || '');
-        const trongLuongNhom = formatNumberForCSV(chiTietRow[chiTietColumnIndex['trong_luong_nhom']] || '');
-        const viTriLapDat = chiTietRow[chiTietColumnIndex['vi_tri_lap_dat']] || '';
-        const nhomSanPham = chiTietRow[chiTietColumnIndex['nhom_san_pham']] || '';
-        const maSanPhamId = chiTietRow[chiTietColumnIndex['ma_san_pham_id']] || '';
-        const taiKhoanKho = calculateTaiKhoanKho(nhomSanPham, maSanPhamId);
+        worksheet.addRow(headers);
 
-        const loaiDonHang = donHangRow[donHangColumnIndex['loai_don_hang']] || '';
-        const ngayGiaoHang = donHangRow[donHangColumnIndex['ngay_giao_hang']] || '';
-        const ngayXuatKho = donHangRow[donHangColumnIndex['ngay_xuat_kho']] || '';
-        const xuongSanXuat = donHangRow[donHangColumnIndex['xuong_san_xuat']] || '';
-        const maHopDong = donHangRow[donHangColumnIndex['ma_hop_dong']] || '';
-        const donViPhuTrach = donHangRow[donHangColumnIndex['don_vi_phu_trach']] || '';
-        const maNhanVien = donHangRow[donHangColumnIndex['ma_nhan_vien']] || '';
-        const maKhachHangID = donHangRow[donHangColumnIndex['ma_khach_hang_id']] || '';
-        const tenNguoiLienHe = donHangRow[donHangColumnIndex['ten_nguoi_lien_he']] || '';
-        const diaChi = donHangRow[donHangColumnIndex['dia_chi']] || '';
-        const diaChiChiTiet = donHangRow[donHangColumnIndex['dia_chi_chi_tiet']] || '';
-        const mucChietKhauNPP = formatNumberForCSV(donHangRow[donHangColumnIndex['muc_chiet_khau_npp']] || '');
-        const phiVanChuyenLapDatNPP = formatNumberForCSV(donHangRow[donHangColumnIndex['phi_van_chuyen_lap_dat_npp']] || '');
-        const soTienTTL1 = formatNumberForCSV(donHangRow[donHangColumnIndex['so_tien_tt_l1']] || '');
-        const soTienPhaiThanhToanNPP = formatNumberForCSV(donHangRow[donHangColumnIndex['so_tien_phai_thanh_toan_npp']] || '');
-        const fileBaoGiaNPP = donHangRow[donHangColumnIndex['file_bao_gia_npp']] || '';
-
-        let ngayHaChToan = '';
-        let ngayChungTu = '';
-
-        if (loaiDonHang === "Yêu cầu kiểm tra") {
-            ngayHaChToan = ngayGiaoHang;
-            ngayChungTu = ngayGiaoHang;
-        } else {
-            ngayHaChToan = ngayXuatKho;
-            ngayChungTu = ngayXuatKho;
-        }
-
-        let maKhachHang = '';
-        let tenKhachHang = '';
-        let diaChiHienThi = '';
-
-        if (!["BP. BH1", "BP. BH2", "P. Bán hàng", "BP. Dịch vụ"].includes(donViPhuTrach)) {
-            maKhachHang = maNhanVien.substring(0, 9);
-            tenKhachHang = donViPhuTrach;
-            diaChiHienThi = diaChi;
-        } else {
-            maKhachHang = maKhachHangID;
-            tenKhachHang = tenNguoiLienHe;
-            diaChiHienThi = diaChiChiTiet;
-        }
-
-        let tenHang = '';
-        if (dienGiai !== "") {
-            tenHang = dienGiai;
-        } else {
-            tenHang = ghiChu;
-        }
-
-        let kho = '';
-        if (xuongSanXuat === "Hà Nội") {
-            if (nhomSanPham !== "Vật tư phát sinh" && nhomSanPham !== "Vật tư khác") {
-                kho = "K09.TP.CUA.HN";
-            } else {
-                kho = "K03_SX.HN_152";
-            }
-        } else if (xuongSanXuat === "Long An") {
-            if (nhomSanPham !== "Vật tư phát sinh" && nhomSanPham !== "Vật tư khác") {
-                kho = "K10.TP.CUA.LA";
-            } else {
-                kho = "K04_SX.LA_152";
-            }
-        }
-
-        const thongTinCongTrinh = calculateThongTinCongTrinh(donHangRow, donHangColumnIndex);
-        const mnvCongTy = calculateMnvCongTy(donHangRow, donHangColumnIndex);
-        const ghiChuFull = `${viTriLapDat} - ${ghiChu}`;
-
-        const escapeCSV = (str) => {
-            if (!str) return '';
-            if (str.includes(',') || str.includes('"') || str.includes('\n')) {
-                return '"' + str.replace(/"/g, '""') + '"';
-            }
-            return str;
+        // Định dạng tiêu đề
+        const headerRow = worksheet.getRow(1);
+        headerRow.font = { bold: true };
+        headerRow.fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: 'FFE0E0E0' }
         };
 
-        csvContent += `${escapeCSV(maDonHangID)},,,,,,0,,${escapeCSV(ngayHaChToan)},${escapeCSV(ngayChungTu)},${escapeCSV(maHopDong)},,,,,,,${escapeCSV(maKhachHang)},${escapeCSV(tenKhachHang)},${escapeCSV(diaChiHienThi)},,${escapeCSV(thongTinCongTrinh)},,${escapeCSV(mnvCongTy)},VND,,${escapeCSV(maSanPhamTheoDoi)},${escapeCSV(tenHang)},,131,511,${escapeCSV(dvt)},${khoiLuong},,${donGiaNPP},${giaBanNPP},,${mucChietKhauNPP},,,5111Chietkhau,,,,,${trongLuongNhom},,,,33311,,${escapeCSV(kho)},632,${escapeCSV(taiKhoanKho)},,,,${phiVanChuyenLapDatNPP},${soTienTTL1},${escapeCSV(ghiChuFull)},${soTienPhaiThanhToanNPP},${escapeCSV(fileBaoGiaNPP)}\n`;
-    });
+        // Điền dữ liệu
+        filteredResultsXuat.forEach((result, index) => {
+            const chiTietRow = result.chiTietRow;
+            const donHangRow = result.donHangRow;
+            const chiTietColumnIndex = result.chiTietColumnIndex;
+            const donHangColumnIndex = result.donHangColumnIndex;
 
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement("a");
-    const url = URL.createObjectURL(blob);
+            const maDonHangID = chiTietRow[chiTietColumnIndex['ma_don_hang_id']] || '';
+            const maSanPhamTheoDoi = chiTietRow[chiTietColumnIndex['ma_san_pham_theo_doi']] || '';
+            const dienGiai = chiTietRow[chiTietColumnIndex['dien_giai']] || '';
+            const ghiChu = chiTietRow[chiTietColumnIndex['ghi_chu']] || '';
+            const dvt = chiTietRow[chiTietColumnIndex['dvt']] || '';
+            const khoiLuong = formatNumberForCSV(chiTietRow[chiTietColumnIndex['khoi_luong']] || '');
+            const donGiaNPP = formatNumberForCSV(chiTietRow[chiTietColumnIndex['don_gia_npp']] || '');
+            const giaBanNPP = formatNumberForCSV(chiTietRow[chiTietColumnIndex['gia_ban_npp']] || '');
+            const trongLuongNhom = formatNumberForCSV(chiTietRow[chiTietColumnIndex['trong_luong_nhom']] || '');
+            const viTriLapDat = chiTietRow[chiTietColumnIndex['vi_tri_lap_dat']] || '';
+            const nhomSanPham = chiTietRow[chiTietColumnIndex['nhom_san_pham']] || '';
+            const maSanPhamId = chiTietRow[chiTietColumnIndex['ma_san_pham_id']] || '';
+            const taiKhoanKho = calculateTaiKhoanKho(nhomSanPham, maSanPhamId);
 
-    link.setAttribute("href", url);
-    const tuNgayRaw = document.getElementById("tu-ngay-xuat").value;
-    const denNgayRaw = document.getElementById("den-ngay-xuat").value;
-    const tuNgay = formatDateForFilename(tuNgayRaw);
-    const denNgay = formatDateForFilename(denNgayRaw);
-    const loaiDonHang = document.querySelector('input[name="loai-don-hang-xuat"]:checked').value;
-    const fileName = `Danh sách xuất kho - ${tuNgay} - ${denNgay} - ${loaiDonHang}.csv`;
+            const loaiDonHang = donHangRow[donHangColumnIndex['loai_don_hang']] || '';
+            const ngayGiaoHang = donHangRow[donHangColumnIndex['ngay_giao_hang']] || '';
+            const ngayXuatKho = donHangRow[donHangColumnIndex['ngay_xuat_kho']] || '';
+            const xuongSanXuat = donHangRow[donHangColumnIndex['xuong_san_xuat']] || '';
+            const maHopDong = donHangRow[donHangColumnIndex['ma_hop_dong']] || '';
+            const donViPhuTrach = donHangRow[donHangColumnIndex['don_vi_phu_trach']] || '';
+            const maNhanVien = donHangRow[donHangColumnIndex['ma_nhan_vien']] || '';
+            const maKhachHangID = donHangRow[donHangColumnIndex['ma_khach_hang']] || '';
+            const tenNguoiLienHe = donHangRow[donHangColumnIndex['ten_nguoi_lien_he']] || '';
+            const diaChi = donHangRow[donHangColumnIndex['dia_chi']] || '';
+            const diaChiChiTiet = donHangRow[donHangColumnIndex['dia_chi_chi_tiet']] || '';
+            const mucChietKhauNPP = formatNumberForCSV(donHangRow[donHangColumnIndex['muc_chiet_khau_npp']] || '');
+            const phiVanChuyenLapDatNPP = formatNumberForCSV(donHangRow[donHangColumnIndex['phi_van_chuyen_lap_dat_npp']] || '');
+            const soTienTTL1 = formatNumberForCSV(donHangRow[donHangColumnIndex['so_tien_tt_l1']] || '');
+            const soTienPhaiThanhToanNPP = formatNumberForCSV(donHangRow[donHangColumnIndex['so_tien_phai_thanh_toan_npp']] || '');
+            const fileBaoGiaNPP = donHangRow[donHangColumnIndex['file_bao_gia_npp']] || '';
 
-    link.setAttribute("download", fileName);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+            let ngayHaChToan = '';
+            let ngayChungTu = '';
 
-    showMessageXuat(`Đã xuất ${filteredResultsXuat.length} dòng ra file Excel.`, 'success');
+            if (loaiDonHang === "Yêu cầu kiểm tra") {
+                ngayHaChToan = ngayGiaoHang;
+                ngayChungTu = ngayGiaoHang;
+            } else {
+                ngayHaChToan = ngayXuatKho;
+                ngayChungTu = ngayXuatKho;
+            }
+
+            let maKhachHang = '';
+            let tenKhachHang = '';
+            let diaChiHienThi = '';
+
+            if (!["BP. BH1", "BP. BH2", "P. Bán hàng", "BP. Dịch vụ"].includes(donViPhuTrach)) {
+                maKhachHang = maNhanVien.substring(0, 9);
+                tenKhachHang = donViPhuTrach;
+                diaChiHienThi = diaChi;
+            } else {
+                maKhachHang = lookupKhachHangById[maKhachHangID];
+                tenKhachHang = tenNguoiLienHe;
+                diaChiHienThi = diaChiChiTiet;
+            }
+
+            let tenHang = '';
+            if (dienGiai !== "") {
+                tenHang = dienGiai;
+            } else {
+                tenHang = ghiChu;
+            }
+
+            let kho = '';
+            if (xuongSanXuat === "Hà Nội") {
+                if (nhomSanPham !== "Vật tư phát sinh" && nhomSanPham !== "Vật tư khác") {
+                    kho = "K09.TP.CUA.HN";
+                } else {
+                    kho = "K03_SX.HN_152";
+                }
+            } else if (xuongSanXuat === "Long An") {
+                if (nhomSanPham !== "Vật tư phát sinh" && nhomSanPham !== "Vật tư khác") {
+                    kho = "K10.TP.CUA.LA";
+                } else {
+                    kho = "K04_SX.LA_152";
+                }
+            }
+
+            const thongTinCongTrinh = calculateThongTinCongTrinh(donHangRow, donHangColumnIndex);
+            const mnvCongTy = calculateMnvCongTy(donHangRow, donHangColumnIndex);
+            const ghiChuFull = `${viTriLapDat} - ${ghiChu}`;
+
+            // Tạo dòng dữ liệu
+            const rowData = [
+                maDonHangID, // ID
+                '', // Hiển thị trên sổ
+                '', // Hình thức bán hàng
+                '', // Phương thức thanh toán
+                '', // Kiêm phiếu xuất kho
+                '', // XK vào khu phi thuế quan
+                0, // Lập kèm hóa đơn
+                '', // Đã lập hóa đơn
+                ngayHaChToan, // Ngày hạch toán
+                ngayChungTu, // Ngày chứng từ
+                maHopDong, // Số chứng từ
+                '', // Số phiếu xuất
+                '', // Lý do xuất
+                '', // Mẫu số HĐ
+                '', // Ký hiệu HĐ
+                '', // Số hóa đơn
+                '', // Ngày hóa đơn
+                maKhachHang, // Mã khách hàng
+                tenKhachHang, // Tên khách hàng
+                diaChiHienThi, // Địa chỉ
+                '', // Mã số thuế
+                thongTinCongTrinh, // Diễn giải
+                '', // Nộp vào TK
+                mnvCongTy, // NV bán hàng
+                'VND', // Loại tiền
+                '', // Tỷ giá
+                maSanPhamTheoDoi, // Mã hàng
+                tenHang, // Tên hàng
+                '', // Hàng khuyến mại
+                131, // TK Nợ
+                511, // TK Có
+                dvt, // ĐVT
+                khoiLuong, // Số lượng
+                '', // Đơn giá sau thuế
+                donGiaNPP, // Đơn giá
+                giaBanNPP, // Thành tiền
+                '', // Thành tiền quy đổi
+                mucChietKhauNPP, // Tỷ lệ CK (%)
+                '', // Tiền chiết khấu
+                '', // Tiền chiết khấu quy đổi
+                '5111Chietkhau', // TK chiết khấu
+                '', // Giá tính thuế XK
+                '', // % thuế XK
+                '', // Tiền thuế XK
+                '', // TK thuế XK
+                trongLuongNhom, // % thuế GTGT
+                '', // Tỷ lệ tính thuế
+                '', // Tiền thuế GTGT
+                '', // Tiền thuế GTGT quy đổi
+                '', // TK thuế GTGT
+                '', // HH không TH
+                kho, // Kho
+                632, // TK giá vốn
+                taiKhoanKho, // TK Kho
+                '', // Đơn giá vốn
+                '', // Tiền vốn
+                '', // Hàng hóa giữ hộ/bán hộ
+                phiVanChuyenLapDatNPP, // Phí vận chuyển lắp đặt
+                soTienTTL1, // Chi phí dịch vụ sơn
+                ghiChuFull, // Ghi chú
+                soTienPhaiThanhToanNPP, // Tổng số tiền
+                fileBaoGiaNPP // Kiểu thanh toán
+            ];
+
+            worksheet.addRow(rowData);
+        });
+
+        // Tự động điều chỉnh độ rộng cột
+        worksheet.columns.forEach(column => {
+            let maxLength = 0;
+            column.eachCell({ includeEmpty: true }, cell => {
+                const cellLength = cell.value ? cell.value.toString().length : 10;
+                if (cellLength > maxLength) {
+                    maxLength = cellLength;
+                }
+            });
+            column.width = maxLength < 10 ? 10 : maxLength + 2;
+        });
+
+        // Tạo tên file và tải về
+        const tuNgayRaw = document.getElementById("tu-ngay-xuat").value;
+        const denNgayRaw = document.getElementById("den-ngay-xuat").value;
+        const tuNgay = formatDateForFilename(tuNgayRaw);
+        const denNgay = formatDateForFilename(denNgayRaw);
+        const loaiDonHang = document.querySelector('input[name="loai-don-hang-xuat"]:checked').value;
+
+        const outputBuffer = await workbook.xlsx.writeBuffer();
+        const blob = new Blob([outputBuffer], {
+            type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        });
+
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        const fileName = `Danh sách xuất kho - ${tuNgay} - ${denNgay} - ${loaiDonHang}.xlsx`;
+        link.download = fileName;
+        link.click();
+
+        showMessageXuat(`Đã xuất ${filteredResultsXuat.length} dòng ra file Excel.`, 'success');
+
+    } catch (error) {
+        console.error('Lỗi xuất Excel:', error);
+        showMessageXuat('Không thể xuất Excel. Vui lòng thử lại.', 'error');
+    }
 }
 
 function showLoadingXuat(show) {
@@ -2959,238 +3217,265 @@ function displayResultsLenSanXuat(results) {
     });
 }
 
-function exportToExcelLenSanXuat() {
+async function exportToExcelLenSanXuat() {
     if (filteredResultsLenSanXuat.length === 0) {
         showMessageLenSanXuat('Không có dữ liệu để xuất. Vui lòng thực hiện lọc trước.', 'error');
         return;
     }
 
-    let csvContent = "\uFEFF";
-    // Header row với tất cả các cột
-    csvContent += "ID,Hiển thị trên sổ,Loại xuất kho,Ngày hạch toán (*),Ngày chứng từ (*),Số chứng từ (*),Mẫu số HĐ,Ký hiệu HĐ,Mã đối tượng,Tên đối tượng,Địa chỉ/Bộ phận,Tên người nhận/Của,Lý do xuất/Về việc,Nhân viên bán hàng,Kèm theo,Số lệnh điều động,Ngày lệnh điều động,Người vận chuyển,Tên người vận chuyển,Hợp đồng số,Phương tiện vận chuyển,Xuất tại kho,Địa chỉ kho xuất,Nhập tại chi nhánh,Tên chi nhánh,MST chi nhánh,Nhập tại kho,Địa chỉ kho nhập,Mã hàng (*),Tên hàng,Là hàng khuyến mại,Kho (*),Hàng hóa giữ hộ/bán hộ,TK Nợ (*),TK Có (*),ĐVT,Số lượng,Đơn giá bán,Thành tiền,Đơn giá vốn,Tiền vốn,Số lô,Hạn sử dụng,Đối tượng,Khoản mục CP,Đơn vị,Đối tượng THCP,Công trình,Đơn đặt hàng,Hợp đồng bán,CP không hợp lý,Mã thống kê,m_vt_1,kt_m_vt_1,sl_m_vt_1,m_vt_2,kt_m_vt_2,sl_m_vt_2,m_vt_3,kt_m_vt_3,sl_m_vt_3,m_vt_4,kt_m_vt_4,sl_m_vt_4,m_vt_5,kt_m_vt_5,sl_m_vt_5,m_vt_6,kt_m_vt_6,sl_m_vt_6,m_vt_7,kt_m_vt_7,sl_m_vt_7,m_vt_8,kt_m_vt_8,sl_m_vt_8,m_vt_9,kt_m_vt_9,sl_m_vt_9,m_vt_10,kt_m_vt_10,sl_m_vt_10,m_vt_11,kt_m_vt_11,sl_m_vt_11,m_vt_12,kt_m_vt_12,sl_m_vt_12,m_vt_13,kt_m_vt_13,sl_m_vt_13,m_vt_14,kt_m_vt_14,sl_m_vt_14,m_vt_15,kt_m_vt_15,sl_m_vt_15,m_vt_16,kt_m_vt_16,sl_m_vt_16,m_vt_17,kt_m_vt_17,sl_m_vt_17,m_vt_18,kt_m_vt_18,sl_m_vt_18,m_vt_19,kt_m_vt_19,sl_m_vt_19,m_vt_20,kt_m_vt_20,sl_m_vt_20,m2_vt_1,kt1_m2_vt_1,kt2_m2_vt_1,sl_m2_vt_1,m2_vt_2,kt1_m2_vt_2,kt2_m2_vt_2,sl_m2_vt_2,c_vt_1,sl_c_vt_1,c_vt_2,sl_c_vt_2,c_vt_3,sl_c_vt_3,c_vt_4,sl_c_vt_4,c_vt_5,sl_c_vt_5,c_vt_6,sl_c_vt_6,c_vt_7,sl_c_vt_7,c_vt_8,sl_c_vt_8,c_vt_9,sl_c_vt_9,c_vt_10,sl_c_vt_10,c_vt_11,sl_c_vt_11,c_vt_12,sl_c_vt_12,c_vt_13,sl_c_vt_13,c_vt_14,sl_c_vt_14,c_vt_15,sl_c_vt_15,c_vt_16,sl_c_vt_16,c_vt_17,sl_c_vt_17,c_vt_18,sl_c_vt_18,c_vt_19,sl_c_vt_19,c_vt_20,sl_c_vt_20,c_vt_21,sl_c_vt_21,c_vt_22,sl_c_vt_22,c_vt_23,sl_c_vt_23,c_vt_24,sl_c_vt_24,c_vt_25,sl_c_vt_25,c_vt_26,sl_c_vt_26,c_vt_27,sl_c_vt_27,c_vt_28,sl_c_vt_28,c_vt_29,sl_c_vt_29,c_vt_30,sl_c_vt_30,Số bộ\n";
+    try {
+        // Tạo workbook mới
+        const workbook = new ExcelJS.Workbook();
+        const worksheet = workbook.addWorksheet('Danh sách lệnh sản xuất');
 
-    filteredResultsLenSanXuat.forEach(result => {
-        const chiTietRow = result.chiTietRow;
-        const donHangRow = result.donHangRow;
-        const chiTietColumnIndex = result.chiTietColumnIndex;
-        const donHangColumnIndex = result.donHangColumnIndex;
+        // Thêm tiêu đề cột (theo header CSV cũ)
+        const headers = [
+            'ID', 'Hiển thị trên sổ', 'Loại xuất kho', 'Ngày hạch toán (*)', 'Ngày chứng từ (*)',
+            'Số chứng từ (*)', 'Mẫu số HĐ', 'Ký hiệu HĐ', 'Mã đối tượng', 'Tên đối tượng',
+            'Địa chỉ/Bộ phận', 'Tên người nhận/Của', 'Lý do xuất/Về việc', 'Nhân viên bán hàng',
+            'Kèm theo', 'Số lệnh điều động', 'Ngày lệnh điều động', 'Người vận chuyển',
+            'Tên người vận chuyển', 'Hợp đồng số', 'Phương tiện vận chuyển', 'Xuất tại kho',
+            'Địa chỉ kho xuất', 'Nhập tại chi nhánh', 'Tên chi nhánh', 'MST chi nhánh',
+            'Nhập tại kho', 'Địa chỉ kho nhập', 'Mã hàng (*)', 'Tên hàng', 'Là hàng khuyến mại',
+            'Kho (*)', 'Hàng hóa giữ hộ/bán hộ', 'TK Nợ (*)', 'TK Có (*)', 'ĐVT', 'Số lượng',
+            'Đơn giá bán', 'Thành tiền', 'Đơn giá vốn', 'Tiền vốn', 'Số lô', 'Hạn sử dụng',
+            'Đối tượng', 'Khoản mục CP', 'Đơn vị', 'Đối tượng THCP', 'Công trình', 'Đơn đặt hàng',
+            'Hợp đồng bán', 'CP không hợp lý', 'Mã thống kê', 'm_vt_1', 'kt_m_vt_1', 'sl_m_vt_1',
+            'm_vt_2', 'kt_m_vt_2', 'sl_m_vt_2', 'm_vt_3', 'kt_m_vt_3', 'sl_m_vt_3', 'm_vt_4',
+            'kt_m_vt_4', 'sl_m_vt_4', 'm_vt_5', 'kt_m_vt_5', 'sl_m_vt_5', 'm_vt_6', 'kt_m_vt_6',
+            'sl_m_vt_6', 'm_vt_7', 'kt_m_vt_7', 'sl_m_vt_7', 'm_vt_8', 'kt_m_vt_8', 'sl_m_vt_8',
+            'm_vt_9', 'kt_m_vt_9', 'sl_m_vt_9', 'm_vt_10', 'kt_m_vt_10', 'sl_m_vt_10', 'm_vt_11',
+            'kt_m_vt_11', 'sl_m_vt_11', 'm_vt_12', 'kt_m_vt_12', 'sl_m_vt_12', 'm_vt_13',
+            'kt_m_vt_13', 'sl_m_vt_13', 'm_vt_14', 'kt_m_vt_14', 'sl_m_vt_14', 'm_vt_15',
+            'kt_m_vt_15', 'sl_m_vt_15', 'm_vt_16', 'kt_m_vt_16', 'sl_m_vt_16', 'm_vt_17',
+            'kt_m_vt_17', 'sl_m_vt_17', 'm_vt_18', 'kt_m_vt_18', 'sl_m_vt_18', 'm_vt_19',
+            'kt_m_vt_19', 'sl_m_vt_19', 'm_vt_20', 'kt_m_vt_20', 'sl_m_vt_20', 'm2_vt_1',
+            'kt1_m2_vt_1', 'kt2_m2_vt_1', 'sl_m2_vt_1', 'm2_vt_2', 'kt1_m2_vt_2', 'kt2_m2_vt_2',
+            'sl_m2_vt_2', 'c_vt_1', 'sl_c_vt_1', 'c_vt_2', 'sl_c_vt_2', 'c_vt_3', 'sl_c_vt_3',
+            'c_vt_4', 'sl_c_vt_4', 'c_vt_5', 'sl_c_vt_5', 'c_vt_6', 'sl_c_vt_6', 'c_vt_7',
+            'sl_c_vt_7', 'c_vt_8', 'sl_c_vt_8', 'c_vt_9', 'sl_c_vt_9', 'c_vt_10', 'sl_c_vt_10',
+            'c_vt_11', 'sl_c_vt_11', 'c_vt_12', 'sl_c_vt_12', 'c_vt_13', 'sl_c_vt_13', 'c_vt_14',
+            'sl_c_vt_14', 'c_vt_15', 'sl_c_vt_15', 'c_vt_16', 'sl_c_vt_16', 'c_vt_17',
+            'sl_c_vt_17', 'c_vt_18', 'sl_c_vt_18', 'c_vt_19', 'sl_c_vt_19', 'c_vt_20',
+            'sl_c_vt_20', 'c_vt_21', 'sl_c_vt_21', 'c_vt_22', 'sl_c_vt_22', 'c_vt_23',
+            'sl_c_vt_23', 'c_vt_24', 'sl_c_vt_24', 'c_vt_25', 'sl_c_vt_25', 'c_vt_26',
+            'sl_c_vt_26', 'c_vt_27', 'sl_c_vt_27', 'c_vt_28', 'sl_c_vt_28', 'c_vt_29',
+            'sl_c_vt_29', 'c_vt_30', 'sl_c_vt_30', 'Số bộ'
+        ];
 
-        const maDonHangID = chiTietRow[chiTietColumnIndex['ma_don_hang_id']] || '';
-        const maSanPhamTheoDoi = chiTietRow[chiTietColumnIndex['ma_san_pham_theo_doi']] || '';
-        const dienGiai = chiTietRow[chiTietColumnIndex['dien_giai']] || '';
-        const ghiChu = chiTietRow[chiTietColumnIndex['ghi_chu']] || '';
-        const dvt = chiTietRow[chiTietColumnIndex['dvt']] || '';
-        const soLuong = chiTietRow[chiTietColumnIndex['so_luong']] || '';
-        const khoiLuong = formatNumberForCSV(chiTietRow[chiTietColumnIndex['khoi_luong']] || '');
-        const sttTrongDon = chiTietRow[chiTietColumnIndex['stt_trong_don']] || '';
+        worksheet.addRow(headers);
 
-        const loaiDonHang = donHangRow[donHangColumnIndex['loai_don_hang']] || '';
-        const ngayGiaoHang = donHangRow[donHangColumnIndex['ngay_giao_hang']] || '';
-        const ngayNhapKho = donHangRow[donHangColumnIndex['ngay_nhap_kho']] || '';
-        const xuongSanXuat = donHangRow[donHangColumnIndex['xuong_san_xuat']] || '';
-        const maHopDong = donHangRow[donHangColumnIndex['ma_hop_dong']] || '';
-
-        let ngayHaChToan = '';
-        let ngayChungTu = '';
-
-        if (loaiDonHang === "Yêu cầu kiểm tra") {
-            ngayHaChToan = ngayGiaoHang;
-            ngayChungTu = ngayGiaoHang;
-        } else {
-            ngayHaChToan = ngayNhapKho;
-            ngayChungTu = ngayNhapKho;
-        }
-
-        let tenHang = '';
-        if (dienGiai !== "") {
-            tenHang = dienGiai;
-        } else {
-            tenHang = ghiChu;
-        }
-
-        const mnvCongTy = calculateMnvCongTy(donHangRow, donHangColumnIndex);
-
-        // Xác định kho dựa trên xưởng sản xuất
-        let kho = '';
-        if (xuongSanXuat === "Hà Nội") {
-            kho = "K03_SX.HN_152";
-        } else if (xuongSanXuat === "Long An") {
-            kho = "K04_SX.LA_152";
-        }
-
-        // Xác định đối tượng THCP dựa trên xưởng sản xuất
-        let doiTuongTHCP = '';
-        if (xuongSanXuat === "Hà Nội") {
-            doiTuongTHCP = "25.SXT.X1";
-        } else if (xuongSanXuat === "Long An") {
-            doiTuongTHCP = "25.SXT.X2";
-        }
-
-        // Lấy tất cả các trường bổ sung
-        const m_vt_1 = chiTietRow[chiTietColumnIndex['m_vt_1']] || '';
-        const kt_m_vt_1 = chiTietRow[chiTietColumnIndex['kt_m_vt_1']] || '';
-        const sl_m_vt_1 = formatNumberForCSV(chiTietRow[chiTietColumnIndex['sl_m_vt_1']] || '');
-        const m_vt_2 = chiTietRow[chiTietColumnIndex['m_vt_2']] || '';
-        const kt_m_vt_2 = chiTietRow[chiTietColumnIndex['kt_m_vt_2']] || '';
-        const sl_m_vt_2 = formatNumberForCSV(chiTietRow[chiTietColumnIndex['sl_m_vt_2']] || '');
-        const m_vt_3 = chiTietRow[chiTietColumnIndex['m_vt_3']] || '';
-        const kt_m_vt_3 = chiTietRow[chiTietColumnIndex['kt_m_vt_3']] || '';
-        const sl_m_vt_3 = formatNumberForCSV(chiTietRow[chiTietColumnIndex['sl_m_vt_3']] || '');
-        const m_vt_4 = chiTietRow[chiTietColumnIndex['m_vt_4']] || '';
-        const kt_m_vt_4 = chiTietRow[chiTietColumnIndex['kt_m_vt_4']] || '';
-        const sl_m_vt_4 = formatNumberForCSV(chiTietRow[chiTietColumnIndex['sl_m_vt_4']] || '');
-        const m_vt_5 = chiTietRow[chiTietColumnIndex['m_vt_5']] || '';
-        const kt_m_vt_5 = chiTietRow[chiTietColumnIndex['kt_m_vt_5']] || '';
-        const sl_m_vt_5 = formatNumberForCSV(chiTietRow[chiTietColumnIndex['sl_m_vt_5']] || '');
-        const m_vt_6 = chiTietRow[chiTietColumnIndex['m_vt_6']] || '';
-        const kt_m_vt_6 = chiTietRow[chiTietColumnIndex['kt_m_vt_6']] || '';
-        const sl_m_vt_6 = formatNumberForCSV(chiTietRow[chiTietColumnIndex['sl_m_vt_6']] || '');
-        const m_vt_7 = chiTietRow[chiTietColumnIndex['m_vt_7']] || '';
-        const kt_m_vt_7 = chiTietRow[chiTietColumnIndex['kt_m_vt_7']] || '';
-        const sl_m_vt_7 = formatNumberForCSV(chiTietRow[chiTietColumnIndex['sl_m_vt_7']] || '');
-        const m_vt_8 = chiTietRow[chiTietColumnIndex['m_vt_8']] || '';
-        const kt_m_vt_8 = chiTietRow[chiTietColumnIndex['kt_m_vt_8']] || '';
-        const sl_m_vt_8 = formatNumberForCSV(chiTietRow[chiTietColumnIndex['sl_m_vt_8']] || '');
-        const m_vt_9 = chiTietRow[chiTietColumnIndex['m_vt_9']] || '';
-        const kt_m_vt_9 = chiTietRow[chiTietColumnIndex['kt_m_vt_9']] || '';
-        const sl_m_vt_9 = formatNumberForCSV(chiTietRow[chiTietColumnIndex['sl_m_vt_9']] || '');
-        const m_vt_10 = chiTietRow[chiTietColumnIndex['m_vt_10']] || '';
-        const kt_m_vt_10 = chiTietRow[chiTietColumnIndex['kt_m_vt_10']] || '';
-        const sl_m_vt_10 = formatNumberForCSV(chiTietRow[chiTietColumnIndex['sl_m_vt_10']] || '');
-        const m_vt_11 = chiTietRow[chiTietColumnIndex['m_vt_11']] || '';
-        const kt_m_vt_11 = chiTietRow[chiTietColumnIndex['kt_m_vt_11']] || '';
-        const sl_m_vt_11 = formatNumberForCSV(chiTietRow[chiTietColumnIndex['sl_m_vt_11']] || '');
-        const m_vt_12 = chiTietRow[chiTietColumnIndex['m_vt_12']] || '';
-        const kt_m_vt_12 = chiTietRow[chiTietColumnIndex['kt_m_vt_12']] || '';
-        const sl_m_vt_12 = formatNumberForCSV(chiTietRow[chiTietColumnIndex['sl_m_vt_12']] || '');
-        const m_vt_13 = chiTietRow[chiTietColumnIndex['m_vt_13']] || '';
-        const kt_m_vt_13 = chiTietRow[chiTietColumnIndex['kt_m_vt_13']] || '';
-        const sl_m_vt_13 = formatNumberForCSV(chiTietRow[chiTietColumnIndex['sl_m_vt_13']] || '');
-        const m_vt_14 = chiTietRow[chiTietColumnIndex['m_vt_14']] || '';
-        const kt_m_vt_14 = chiTietRow[chiTietColumnIndex['kt_m_vt_14']] || '';
-        const sl_m_vt_14 = formatNumberForCSV(chiTietRow[chiTietColumnIndex['sl_m_vt_14']] || '');
-        const m_vt_15 = chiTietRow[chiTietColumnIndex['m_vt_15']] || '';
-        const kt_m_vt_15 = chiTietRow[chiTietColumnIndex['kt_m_vt_15']] || '';
-        const sl_m_vt_15 = formatNumberForCSV(chiTietRow[chiTietColumnIndex['sl_m_vt_15']] || '');
-        const m_vt_16 = chiTietRow[chiTietColumnIndex['m_vt_16']] || '';
-        const kt_m_vt_16 = chiTietRow[chiTietColumnIndex['kt_m_vt_16']] || '';
-        const sl_m_vt_16 = formatNumberForCSV(chiTietRow[chiTietColumnIndex['sl_m_vt_16']] || '');
-        const m_vt_17 = chiTietRow[chiTietColumnIndex['m_vt_17']] || '';
-        const kt_m_vt_17 = chiTietRow[chiTietColumnIndex['kt_m_vt_17']] || '';
-        const sl_m_vt_17 = formatNumberForCSV(chiTietRow[chiTietColumnIndex['sl_m_vt_17']] || '');
-        const m_vt_18 = chiTietRow[chiTietColumnIndex['m_vt_18']] || '';
-        const kt_m_vt_18 = chiTietRow[chiTietColumnIndex['kt_m_vt_18']] || '';
-        const sl_m_vt_18 = formatNumberForCSV(chiTietRow[chiTietColumnIndex['sl_m_vt_18']] || '');
-        const m_vt_19 = chiTietRow[chiTietColumnIndex['m_vt_19']] || '';
-        const kt_m_vt_19 = chiTietRow[chiTietColumnIndex['kt_m_vt_19']] || '';
-        const sl_m_vt_19 = formatNumberForCSV(chiTietRow[chiTietColumnIndex['sl_m_vt_19']] || '');
-        const m_vt_20 = chiTietRow[chiTietColumnIndex['m_vt_20']] || '';
-        const kt_m_vt_20 = chiTietRow[chiTietColumnIndex['kt_m_vt_20']] || '';
-        const sl_m_vt_20 = formatNumberForCSV(chiTietRow[chiTietColumnIndex['sl_m_vt_20']] || '');
-
-        // Lấy các trường m2_vt, kt1_m2_vt, kt2_m2_vt, sl_m2_vt (1 đến 2)
-        const m2_vt_1 = chiTietRow[chiTietColumnIndex['m2_vt_1']] || '';
-        const kt1_m2_vt_1 = chiTietRow[chiTietColumnIndex['kt1_m2_vt_1']] || '';
-        const kt2_m2_vt_1 = chiTietRow[chiTietColumnIndex['kt2_m2_vt_1']] || '';
-        const sl_m2_vt_1 = formatNumberForCSV(chiTietRow[chiTietColumnIndex['sl_m2_vt_1']] || '');
-        const m2_vt_2 = chiTietRow[chiTietColumnIndex['m2_vt_2']] || '';
-        const kt1_m2_vt_2 = chiTietRow[chiTietColumnIndex['kt1_m2_vt_2']] || '';
-        const kt2_m2_vt_2 = chiTietRow[chiTietColumnIndex['kt2_m2_vt_2']] || '';
-        const sl_m2_vt_2 = formatNumberForCSV(chiTietRow[chiTietColumnIndex['sl_m2_vt_2']] || '');
-
-        // Lấy các trường c_vt, sl_c_vt (1 đến 30)
-        const c_vt_1 = chiTietRow[chiTietColumnIndex['c_vt_1']] || '';
-        const sl_c_vt_1 = formatNumberForCSV(chiTietRow[chiTietColumnIndex['sl_c_vt_1']] || '');
-        const c_vt_2 = chiTietRow[chiTietColumnIndex['c_vt_2']] || '';
-        const sl_c_vt_2 = formatNumberForCSV(chiTietRow[chiTietColumnIndex['sl_c_vt_2']] || '');
-        const c_vt_3 = chiTietRow[chiTietColumnIndex['c_vt_3']] || '';
-        const sl_c_vt_3 = formatNumberForCSV(chiTietRow[chiTietColumnIndex['sl_c_vt_3']] || '');
-        const c_vt_4 = chiTietRow[chiTietColumnIndex['c_vt_4']] || '';
-        const sl_c_vt_4 = formatNumberForCSV(chiTietRow[chiTietColumnIndex['sl_c_vt_4']] || '');
-        const c_vt_5 = chiTietRow[chiTietColumnIndex['c_vt_5']] || '';
-        const sl_c_vt_5 = formatNumberForCSV(chiTietRow[chiTietColumnIndex['sl_c_vt_5']] || '');
-        const c_vt_6 = chiTietRow[chiTietColumnIndex['c_vt_6']] || '';
-        const sl_c_vt_6 = formatNumberForCSV(chiTietRow[chiTietColumnIndex['sl_c_vt_6']] || '');
-        const c_vt_7 = chiTietRow[chiTietColumnIndex['c_vt_7']] || '';
-        const sl_c_vt_7 = formatNumberForCSV(chiTietRow[chiTietColumnIndex['sl_c_vt_7']] || '');
-        const c_vt_8 = chiTietRow[chiTietColumnIndex['c_vt_8']] || '';
-        const sl_c_vt_8 = formatNumberForCSV(chiTietRow[chiTietColumnIndex['sl_c_vt_8']] || '');
-        const c_vt_9 = chiTietRow[chiTietColumnIndex['c_vt_9']] || '';
-        const sl_c_vt_9 = formatNumberForCSV(chiTietRow[chiTietColumnIndex['sl_c_vt_9']] || '');
-        const c_vt_10 = chiTietRow[chiTietColumnIndex['c_vt_10']] || '';
-        const sl_c_vt_10 = formatNumberForCSV(chiTietRow[chiTietColumnIndex['sl_c_vt_10']] || '');
-        const c_vt_11 = chiTietRow[chiTietColumnIndex['c_vt_11']] || '';
-        const sl_c_vt_11 = formatNumberForCSV(chiTietRow[chiTietColumnIndex['sl_c_vt_11']] || '');
-        const c_vt_12 = chiTietRow[chiTietColumnIndex['c_vt_12']] || '';
-        const sl_c_vt_12 = formatNumberForCSV(chiTietRow[chiTietColumnIndex['sl_c_vt_12']] || '');
-        const c_vt_13 = chiTietRow[chiTietColumnIndex['c_vt_13']] || '';
-        const sl_c_vt_13 = formatNumberForCSV(chiTietRow[chiTietColumnIndex['sl_c_vt_13']] || '');
-        const c_vt_14 = chiTietRow[chiTietColumnIndex['c_vt_14']] || '';
-        const sl_c_vt_14 = formatNumberForCSV(chiTietRow[chiTietColumnIndex['sl_c_vt_14']] || '');
-        const c_vt_15 = chiTietRow[chiTietColumnIndex['c_vt_15']] || '';
-        const sl_c_vt_15 = formatNumberForCSV(chiTietRow[chiTietColumnIndex['sl_c_vt_15']] || '');
-        const c_vt_16 = chiTietRow[chiTietColumnIndex['c_vt_16']] || '';
-        const sl_c_vt_16 = formatNumberForCSV(chiTietRow[chiTietColumnIndex['sl_c_vt_16']] || '');
-        const c_vt_17 = chiTietRow[chiTietColumnIndex['c_vt_17']] || '';
-        const sl_c_vt_17 = formatNumberForCSV(chiTietRow[chiTietColumnIndex['sl_c_vt_17']] || '');
-        const c_vt_18 = chiTietRow[chiTietColumnIndex['c_vt_18']] || '';
-        const sl_c_vt_18 = formatNumberForCSV(chiTietRow[chiTietColumnIndex['sl_c_vt_18']] || '');
-        const c_vt_19 = chiTietRow[chiTietColumnIndex['c_vt_19']] || '';
-        const sl_c_vt_19 = formatNumberForCSV(chiTietRow[chiTietColumnIndex['sl_c_vt_19']] || '');
-        const c_vt_20 = chiTietRow[chiTietColumnIndex['c_vt_20']] || '';
-        const sl_c_vt_20 = formatNumberForCSV(chiTietRow[chiTietColumnIndex['sl_c_vt_20']] || '');
-        const c_vt_21 = chiTietRow[chiTietColumnIndex['c_vt_21']] || '';
-        const sl_c_vt_21 = formatNumberForCSV(chiTietRow[chiTietColumnIndex['sl_c_vt_21']] || '');
-        const c_vt_22 = chiTietRow[chiTietColumnIndex['c_vt_22']] || '';
-        const sl_c_vt_22 = formatNumberForCSV(chiTietRow[chiTietColumnIndex['sl_c_vt_22']] || '');
-        const c_vt_23 = chiTietRow[chiTietColumnIndex['c_vt_23']] || '';
-        const sl_c_vt_23 = formatNumberForCSV(chiTietRow[chiTietColumnIndex['sl_c_vt_23']] || '');
-        const c_vt_24 = chiTietRow[chiTietColumnIndex['c_vt_24']] || '';
-        const sl_c_vt_24 = formatNumberForCSV(chiTietRow[chiTietColumnIndex['sl_c_vt_24']] || '');
-        const c_vt_25 = chiTietRow[chiTietColumnIndex['c_vt_25']] || '';
-        const sl_c_vt_25 = formatNumberForCSV(chiTietRow[chiTietColumnIndex['sl_c_vt_25']] || '');
-        const c_vt_26 = chiTietRow[chiTietColumnIndex['c_vt_26']] || '';
-        const sl_c_vt_26 = formatNumberForCSV(chiTietRow[chiTietColumnIndex['sl_c_vt_26']] || '');
-        const c_vt_27 = chiTietRow[chiTietColumnIndex['c_vt_27']] || '';
-        const sl_c_vt_27 = formatNumberForCSV(chiTietRow[chiTietColumnIndex['sl_c_vt_27']] || '');
-        const c_vt_28 = chiTietRow[chiTietColumnIndex['c_vt_28']] || '';
-        const sl_c_vt_28 = formatNumberForCSV(chiTietRow[chiTietColumnIndex['sl_c_vt_28']] || '');
-        const c_vt_29 = chiTietRow[chiTietColumnIndex['c_vt_29']] || '';
-        const sl_c_vt_29 = formatNumberForCSV(chiTietRow[chiTietColumnIndex['sl_c_vt_29']] || '');
-        const c_vt_30 = chiTietRow[chiTietColumnIndex['c_vt_30']] || '';
-        const sl_c_vt_30 = formatNumberForCSV(chiTietRow[chiTietColumnIndex['sl_c_vt_30']] || '');
-
-        const escapeCSV = (str) => {
-            if (!str) return '';
-            if (str.includes(',') || str.includes('"') || str.includes('\n')) {
-                return '"' + str.replace(/"/g, '""') + '"';
-            }
-            return str;
+        // Định dạng tiêu đề
+        const headerRow = worksheet.getRow(1);
+        headerRow.font = { bold: true };
+        headerRow.fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: 'FFE0E0E0' }
         };
 
-        // Tạo dòng CSV với tất cả các cột
-        csvContent += `${escapeCSV(maDonHangID)},${escapeCSV(sttTrongDon)},1,${escapeCSV(ngayHaChToan)},${escapeCSV(ngayChungTu)},,,,,,,,Xuất kho NVL sản xuất cho Lệnh sản xuất <${escapeCSV(maHopDong)}>,${escapeCSV(mnvCongTy)},,,,,,,,,,,,,,,,,,${escapeCSV(kho)},,154,1521,,,,,,,,,,,${escapeCSV(doiTuongTHCP)},${escapeCSV(maSanPhamTheoDoi)},,${escapeCSV(maHopDong)},,,,${escapeCSV(m_vt_1)},${escapeCSV(kt_m_vt_1)},${sl_m_vt_1},${escapeCSV(m_vt_2)},${escapeCSV(kt_m_vt_2)},${sl_m_vt_2},${escapeCSV(m_vt_3)},${escapeCSV(kt_m_vt_3)},${sl_m_vt_3},${escapeCSV(m_vt_4)},${escapeCSV(kt_m_vt_4)},${sl_m_vt_4},${escapeCSV(m_vt_5)},${escapeCSV(kt_m_vt_5)},${sl_m_vt_5},${escapeCSV(m_vt_6)},${escapeCSV(kt_m_vt_6)},${sl_m_vt_6},${escapeCSV(m_vt_7)},${escapeCSV(kt_m_vt_7)},${sl_m_vt_7},${escapeCSV(m_vt_8)},${escapeCSV(kt_m_vt_8)},${sl_m_vt_8},${escapeCSV(m_vt_9)},${escapeCSV(kt_m_vt_9)},${sl_m_vt_9},${escapeCSV(m_vt_10)},${escapeCSV(kt_m_vt_10)},${sl_m_vt_10},${escapeCSV(m_vt_11)},${escapeCSV(kt_m_vt_11)},${sl_m_vt_11},${escapeCSV(m_vt_12)},${escapeCSV(kt_m_vt_12)},${sl_m_vt_12},${escapeCSV(m_vt_13)},${escapeCSV(kt_m_vt_13)},${sl_m_vt_13},${escapeCSV(m_vt_14)},${escapeCSV(kt_m_vt_14)},${sl_m_vt_14},${escapeCSV(m_vt_15)},${escapeCSV(kt_m_vt_15)},${sl_m_vt_15},${escapeCSV(m_vt_16)},${escapeCSV(kt_m_vt_16)},${sl_m_vt_16},${escapeCSV(m_vt_17)},${escapeCSV(kt_m_vt_17)},${sl_m_vt_17},${escapeCSV(m_vt_18)},${escapeCSV(kt_m_vt_18)},${sl_m_vt_18},${escapeCSV(m_vt_19)},${escapeCSV(kt_m_vt_19)},${sl_m_vt_19},${escapeCSV(m_vt_20)},${escapeCSV(kt_m_vt_20)},${sl_m_vt_20},${escapeCSV(m2_vt_1)},${escapeCSV(kt1_m2_vt_1)},${escapeCSV(kt2_m2_vt_1)},${sl_m2_vt_1},${escapeCSV(m2_vt_2)},${escapeCSV(kt1_m2_vt_2)},${escapeCSV(kt2_m2_vt_2)},${sl_m2_vt_2},${escapeCSV(c_vt_1)},${sl_c_vt_1},${escapeCSV(c_vt_2)},${sl_c_vt_2},${escapeCSV(c_vt_3)},${sl_c_vt_3},${escapeCSV(c_vt_4)},${sl_c_vt_4},${escapeCSV(c_vt_5)},${sl_c_vt_5},${escapeCSV(c_vt_6)},${sl_c_vt_6},${escapeCSV(c_vt_7)},${sl_c_vt_7},${escapeCSV(c_vt_8)},${sl_c_vt_8},${escapeCSV(c_vt_9)},${sl_c_vt_9},${escapeCSV(c_vt_10)},${sl_c_vt_10},${escapeCSV(c_vt_11)},${sl_c_vt_11},${escapeCSV(c_vt_12)},${sl_c_vt_12},${escapeCSV(c_vt_13)},${sl_c_vt_13},${escapeCSV(c_vt_14)},${sl_c_vt_14},${escapeCSV(c_vt_15)},${sl_c_vt_15},${escapeCSV(c_vt_16)},${sl_c_vt_16},${escapeCSV(c_vt_17)},${sl_c_vt_17},${escapeCSV(c_vt_18)},${sl_c_vt_18},${escapeCSV(c_vt_19)},${sl_c_vt_19},${escapeCSV(c_vt_20)},${sl_c_vt_20},${escapeCSV(c_vt_21)},${sl_c_vt_21},${escapeCSV(c_vt_22)},${sl_c_vt_22},${escapeCSV(c_vt_23)},${sl_c_vt_23},${escapeCSV(c_vt_24)},${sl_c_vt_24},${escapeCSV(c_vt_25)},${sl_c_vt_25},${escapeCSV(c_vt_26)},${sl_c_vt_26},${escapeCSV(c_vt_27)},${sl_c_vt_27},${escapeCSV(c_vt_28)},${sl_c_vt_28},${escapeCSV(c_vt_29)},${sl_c_vt_29},${escapeCSV(c_vt_30)},${sl_c_vt_30},${soLuong}\n`;
-    });
+        // Điền dữ liệu
+        filteredResultsLenSanXuat.forEach((result, index) => {
+            const chiTietRow = result.chiTietRow;
+            const donHangRow = result.donHangRow;
+            const chiTietColumnIndex = result.chiTietColumnIndex;
+            const donHangColumnIndex = result.donHangColumnIndex;
 
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement("a");
-    const url = URL.createObjectURL(blob);
+            // Lấy các giá trị cần thiết
+            const maDonHangID = chiTietRow[chiTietColumnIndex['ma_don_hang_id']] || '';
+            const sttTrongDon = chiTietRow[chiTietColumnIndex['stt_trong_don']] || '';
+            const maSanPhamTheoDoi = chiTietRow[chiTietColumnIndex['ma_san_pham_theo_doi']] || '';
+            const dienGiai = chiTietRow[chiTietColumnIndex['dien_giai']] || '';
+            const ghiChu = chiTietRow[chiTietColumnIndex['ghi_chu']] || '';
+            const dvt = chiTietRow[chiTietColumnIndex['dvt']] || '';
+            const soLuong = chiTietRow[chiTietColumnIndex['so_luong']] || '';
+            const khoiLuong = formatNumberForCSV(chiTietRow[chiTietColumnIndex['khoi_luong']] || '');
 
-    link.setAttribute("href", url);
-    const tuNgayRaw = document.getElementById("tu-ngay-lsx").value;
-    const denNgayRaw = document.getElementById("den-ngay-lsx").value;
-    const tuNgay = formatDateForFilename(tuNgayRaw);
-    const denNgay = formatDateForFilename(denNgayRaw);
-    const loaiDonHang = document.querySelector('input[name="loai-don-hang-lsx"]:checked').value;
-    const fileName = `Danh sách lệnh sản xuất - ${tuNgay} - ${denNgay} - ${loaiDonHang}.csv`;
+            const loaiDonHang = donHangRow[donHangColumnIndex['loai_don_hang']] || '';
+            const ngayGiaoHang = donHangRow[donHangColumnIndex['ngay_giao_hang']] || '';
+            const ngayNhapKho = donHangRow[donHangColumnIndex['ngay_nhap_kho']] || '';
+            const xuongSanXuat = donHangRow[donHangColumnIndex['xuong_san_xuat']] || '';
+            const maHopDong = donHangRow[donHangColumnIndex['ma_hop_dong']] || '';
 
-    link.setAttribute("download", fileName);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+            let ngayHaChToan = '';
+            let ngayChungTu = '';
 
-    showMessageLenSanXuat(`Đã xuất ${filteredResultsLenSanXuat.length} dòng ra file Excel.`, 'success');
+            if (loaiDonHang === "Yêu cầu kiểm tra") {
+                ngayHaChToan = ngayGiaoHang;
+                ngayChungTu = ngayGiaoHang;
+            } else {
+                ngayHaChToan = ngayNhapKho;
+                ngayChungTu = ngayNhapKho;
+            }
+
+            const mnvCongTy = calculateMnvCongTy(donHangRow, donHangColumnIndex);
+
+            // Xác định kho và đối tượng THCP
+            let kho = '';
+            let doiTuongTHCP = '';
+            if (xuongSanXuat === "Hà Nội") {
+                kho = "K03_SX.HN_152";
+                doiTuongTHCP = "25.SXT.X1";
+            } else if (xuongSanXuat === "Long An") {
+                kho = "K04_SX.LA_152";
+                doiTuongTHCP = "25.SXT.X2";
+            }
+
+            // Lấy tất cả các trường bổ sung (m_vt, m2_vt, c_vt)
+            const getValue = (fieldName) => chiTietRow[chiTietColumnIndex[fieldName]] || '';
+            const getNumberValue = (fieldName) => formatNumberForCSV(getValue(fieldName));
+
+            // Tạo dòng dữ liệu (vì có quá nhiều cột, tôi sẽ tạo mảng dữ liệu)
+            const rowData = [
+                maDonHangID, // ID
+                sttTrongDon, // Hiển thị trên sổ
+                1, // Loại xuất kho
+                ngayHaChToan, // Ngày hạch toán
+                ngayChungTu, // Ngày chứng từ
+                '', // Số chứng từ
+                '', // Mẫu số HĐ
+                '', // Ký hiệu HĐ
+                '', // Mã đối tượng
+                '', // Tên đối tượng
+                '', // Địa chỉ/Bộ phận
+                '', // Tên người nhận/Của
+                `Xuất kho NVL sản xuất cho Lệnh sản xuất <${maHopDong}>`, // Lý do xuất/Về việc
+                mnvCongTy, // Nhân viên bán hàng
+                '', // Kèm theo
+                '', // Số lệnh điều động
+                '', // Ngày lệnh điều động
+                '', // Người vận chuyển
+                '', // Tên người vận chuyển
+                '', // Hợp đồng số
+                '', // Phương tiện vận chuyển
+                '', // Xuất tại kho
+                '', // Địa chỉ kho xuất
+                '', // Nhập tại chi nhánh
+                '', // Tên chi nhánh
+                '', // MST chi nhánh
+                '', // Nhập tại kho
+                '', // Địa chỉ kho nhập
+                '', // Mã hàng
+                '', // Tên hàng
+                ghiChu, // Là hàng khuyến mại
+                kho, // Kho
+                '', // Hàng hóa giữ hộ/bán hộ
+                154, // TK Nợ
+                1521, // TK Có
+                '', // ĐVT
+                '', // Số lượng
+                '', // Đơn giá bán
+                '', // Thành tiền
+                '', // Đơn giá vốn
+                '', // Tiền vốn
+                '', // Số lô
+                '', // Hạn sử dụng
+                '', // Đối tượng
+                '', // Khoản mục CP
+                doiTuongTHCP, // Đơn vị
+                maSanPhamTheoDoi, // Đối tượng THCP
+                '', // Công trình
+                maHopDong, // Đơn đặt hàng
+                '', // Hợp đồng bán
+                '', // CP không hợp lý
+                '', // Mã thống kê
+                // Các trường m_vt (1-20)
+                getValue('m_vt_1'), getValue('kt_m_vt_1'), getNumberValue('sl_m_vt_1'),
+                getValue('m_vt_2'), getValue('kt_m_vt_2'), getNumberValue('sl_m_vt_2'),
+                getValue('m_vt_3'), getValue('kt_m_vt_3'), getNumberValue('sl_m_vt_3'),
+                getValue('m_vt_4'), getValue('kt_m_vt_4'), getNumberValue('sl_m_vt_4'),
+                getValue('m_vt_5'), getValue('kt_m_vt_5'), getNumberValue('sl_m_vt_5'),
+                getValue('m_vt_6'), getValue('kt_m_vt_6'), getNumberValue('sl_m_vt_6'),
+                getValue('m_vt_7'), getValue('kt_m_vt_7'), getNumberValue('sl_m_vt_7'),
+                getValue('m_vt_8'), getValue('kt_m_vt_8'), getNumberValue('sl_m_vt_8'),
+                getValue('m_vt_9'), getValue('kt_m_vt_9'), getNumberValue('sl_m_vt_9'),
+                getValue('m_vt_10'), getValue('kt_m_vt_10'), getNumberValue('sl_m_vt_10'),
+                getValue('m_vt_11'), getValue('kt_m_vt_11'), getNumberValue('sl_m_vt_11'),
+                getValue('m_vt_12'), getValue('kt_m_vt_12'), getNumberValue('sl_m_vt_12'),
+                getValue('m_vt_13'), getValue('kt_m_vt_13'), getNumberValue('sl_m_vt_13'),
+                getValue('m_vt_14'), getValue('kt_m_vt_14'), getNumberValue('sl_m_vt_14'),
+                getValue('m_vt_15'), getValue('kt_m_vt_15'), getNumberValue('sl_m_vt_15'),
+                getValue('m_vt_16'), getValue('kt_m_vt_16'), getNumberValue('sl_m_vt_16'),
+                getValue('m_vt_17'), getValue('kt_m_vt_17'), getNumberValue('sl_m_vt_17'),
+                getValue('m_vt_18'), getValue('kt_m_vt_18'), getNumberValue('sl_m_vt_18'),
+                getValue('m_vt_19'), getValue('kt_m_vt_19'), getNumberValue('sl_m_vt_19'),
+                getValue('m_vt_20'), getValue('kt_m_vt_20'), getNumberValue('sl_m_vt_20'),
+                // Các trường m2_vt (1-2)
+                getValue('m2_vt_1'), getValue('kt1_m2_vt_1'), getValue('kt2_m2_vt_1'), getNumberValue('sl_m2_vt_1'),
+                getValue('m2_vt_2'), getValue('kt1_m2_vt_2'), getValue('kt2_m2_vt_2'), getNumberValue('sl_m2_vt_2'),
+                // Các trường c_vt (1-30)
+                getValue('c_vt_1'), getNumberValue('sl_c_vt_1'),
+                getValue('c_vt_2'), getNumberValue('sl_c_vt_2'),
+                getValue('c_vt_3'), getNumberValue('sl_c_vt_3'),
+                getValue('c_vt_4'), getNumberValue('sl_c_vt_4'),
+                getValue('c_vt_5'), getNumberValue('sl_c_vt_5'),
+                getValue('c_vt_6'), getNumberValue('sl_c_vt_6'),
+                getValue('c_vt_7'), getNumberValue('sl_c_vt_7'),
+                getValue('c_vt_8'), getNumberValue('sl_c_vt_8'),
+                getValue('c_vt_9'), getNumberValue('sl_c_vt_9'),
+                getValue('c_vt_10'), getNumberValue('sl_c_vt_10'),
+                getValue('c_vt_11'), getNumberValue('sl_c_vt_11'),
+                getValue('c_vt_12'), getNumberValue('sl_c_vt_12'),
+                getValue('c_vt_13'), getNumberValue('sl_c_vt_13'),
+                getValue('c_vt_14'), getNumberValue('sl_c_vt_14'),
+                getValue('c_vt_15'), getNumberValue('sl_c_vt_15'),
+                getValue('c_vt_16'), getNumberValue('sl_c_vt_16'),
+                getValue('c_vt_17'), getNumberValue('sl_c_vt_17'),
+                getValue('c_vt_18'), getNumberValue('sl_c_vt_18'),
+                getValue('c_vt_19'), getNumberValue('sl_c_vt_19'),
+                getValue('c_vt_20'), getNumberValue('sl_c_vt_20'),
+                getValue('c_vt_21'), getNumberValue('sl_c_vt_21'),
+                getValue('c_vt_22'), getNumberValue('sl_c_vt_22'),
+                getValue('c_vt_23'), getNumberValue('sl_c_vt_23'),
+                getValue('c_vt_24'), getNumberValue('sl_c_vt_24'),
+                getValue('c_vt_25'), getNumberValue('sl_c_vt_25'),
+                getValue('c_vt_26'), getNumberValue('sl_c_vt_26'),
+                getValue('c_vt_27'), getNumberValue('sl_c_vt_27'),
+                getValue('c_vt_28'), getNumberValue('sl_c_vt_28'),
+                getValue('c_vt_29'), getNumberValue('sl_c_vt_29'),
+                getValue('c_vt_30'), getNumberValue('sl_c_vt_30'),
+                soLuong // Số bộ
+            ];
+
+            worksheet.addRow(rowData);
+        });
+
+        // Tự động điều chỉnh độ rộng cột
+        worksheet.columns.forEach(column => {
+            let maxLength = 0;
+            column.eachCell({ includeEmpty: true }, cell => {
+                const cellLength = cell.value ? cell.value.toString().length : 10;
+                if (cellLength > maxLength) {
+                    maxLength = cellLength;
+                }
+            });
+            column.width = maxLength < 10 ? 10 : maxLength + 2;
+        });
+
+        // Tạo tên file và tải về
+        const tuNgayRaw = document.getElementById("tu-ngay-lsx").value;
+        const denNgayRaw = document.getElementById("den-ngay-lsx").value;
+        const tuNgay = formatDateForFilename(tuNgayRaw);
+        const denNgay = formatDateForFilename(denNgayRaw);
+        const loaiDonHang = document.querySelector('input[name="loai-don-hang-lsx"]:checked').value;
+
+        const outputBuffer = await workbook.xlsx.writeBuffer();
+        const blob = new Blob([outputBuffer], {
+            type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        });
+
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        const fileName = `Danh sách lệnh sản xuất - ${tuNgay} - ${denNgay} - ${loaiDonHang}.xlsx`;
+        link.download = fileName;
+        link.click();
+
+        showMessageLenSanXuat(`Đã xuất ${filteredResultsLenSanXuat.length} dòng ra file Excel.`, 'success');
+
+    } catch (error) {
+        console.error('Lỗi xuất Excel:', error);
+        showMessageLenSanXuat('Không thể xuất Excel. Vui lòng thử lại.', 'error');
+    }
 }
 
 function showLoadingLenSanXuat(show) {
@@ -3837,234 +4122,271 @@ function displayResultsXuatBaoHanh(results) {
     });
 }
 
-function exportToExcelXuatBaoHanh() {
+async function exportToExcelXuatBaoHanh() {
     if (filteredResultsXuatBaoHanh.length === 0) {
         showMessageXuatBaoHanh('Không có dữ liệu để xuất. Vui lòng thực hiện lọc trước.', 'error');
         return;
     }
 
-    let csvContent = "\uFEFF";
-    // Header row với tất cả các cột (giống tab lệnh sản xuất)
-    csvContent += "ID,Hiển thị trên sổ,Loại xuất kho,Ngày hạch toán (*),Ngày chứng từ (*),Số chứng từ (*),Mẫu số HĐ,Ký hiệu HĐ,Mã đối tượng,Tên đối tượng,Địa chỉ/Bộ phận,Tên người nhận/Của,Lý do xuất/Về việc,Nhân viên bán hàng,Kèm theo,Số lệnh điều động,Ngày lệnh điều động,Người vận chuyển,Tên người vận chuyển,Hợp đồng số,Phương tiện vận chuyển,Xuất tại kho,Địa chỉ kho xuất,Nhập tại chi nhánh,Tên chi nhánh,MST chi nhánh,Nhập tại kho,Địa chỉ kho nhập,Mã hàng (*),Tên hàng,Là hàng khuyến mại,Kho (*),Hàng hóa giữ hộ/bán hộ,TK Nợ (*),TK Có (*),ĐVT,Số lượng,Đơn giá bán,Thành tiền,Đơn giá vốn,Tiền vốn,Số lô,Hạn sử dụng,Đối tượng,Khoản mục CP,Đơn vị,Đối tượng THCP,Công trình,Đơn đặt hàng,Hợp đồng bán,CP không hợp lý,Mã thống kê,m_vt_1,kt_m_vt_1,sl_m_vt_1,m_vt_2,kt_m_vt_2,sl_m_vt_2,m_vt_3,kt_m_vt_3,sl_m_vt_3,m_vt_4,kt_m_vt_4,sl_m_vt_4,m_vt_5,kt_m_vt_5,sl_m_vt_5,m_vt_6,kt_m_vt_6,sl_m_vt_6,m_vt_7,kt_m_vt_7,sl_m_vt_7,m_vt_8,kt_m_vt_8,sl_m_vt_8,m_vt_9,kt_m_vt_9,sl_m_vt_9,m_vt_10,kt_m_vt_10,sl_m_vt_10,m_vt_11,kt_m_vt_11,sl_m_vt_11,m_vt_12,kt_m_vt_12,sl_m_vt_12,m_vt_13,kt_m_vt_13,sl_m_vt_13,m_vt_14,kt_m_vt_14,sl_m_vt_14,m_vt_15,kt_m_vt_15,sl_m_vt_15,m_vt_16,kt_m_vt_16,sl_m_vt_16,m_vt_17,kt_m_vt_17,sl_m_vt_17,m_vt_18,kt_m_vt_18,sl_m_vt_18,m_vt_19,kt_m_vt_19,sl_m_vt_19,m_vt_20,kt_m_vt_20,sl_m_vt_20,m2_vt_1,kt1_m2_vt_1,kt2_m2_vt_1,sl_m2_vt_1,m2_vt_2,kt1_m2_vt_2,kt2_m2_vt_2,sl_m2_vt_2,c_vt_1,sl_c_vt_1,c_vt_2,sl_c_vt_2,c_vt_3,sl_c_vt_3,c_vt_4,sl_c_vt_4,c_vt_5,sl_c_vt_5,c_vt_6,sl_c_vt_6,c_vt_7,sl_c_vt_7,c_vt_8,sl_c_vt_8,c_vt_9,sl_c_vt_9,c_vt_10,sl_c_vt_10,c_vt_11,sl_c_vt_11,c_vt_12,sl_c_vt_12,c_vt_13,sl_c_vt_13,c_vt_14,sl_c_vt_14,c_vt_15,sl_c_vt_15,c_vt_16,sl_c_vt_16,c_vt_17,sl_c_vt_17,c_vt_18,sl_c_vt_18,c_vt_19,sl_c_vt_19,c_vt_20,sl_c_vt_20,c_vt_21,sl_c_vt_21,c_vt_22,sl_c_vt_22,c_vt_23,sl_c_vt_23,c_vt_24,sl_c_vt_24,c_vt_25,sl_c_vt_25,c_vt_26,sl_c_vt_26,c_vt_27,sl_c_vt_27,c_vt_28,sl_c_vt_28,c_vt_29,sl_c_vt_29,c_vt_30,sl_c_vt_30,Số bộ\n";
+    try {
+        // Tạo workbook mới
+        const workbook = new ExcelJS.Workbook();
+        const worksheet = workbook.addWorksheet('Danh sách xuất bảo hành');
 
-    filteredResultsXuatBaoHanh.forEach(result => {
-        const chiTietRow = result.chiTietRow;
-        const donHangRow = result.donHangRow;
-        const chiTietColumnIndex = result.chiTietColumnIndex;
-        const donHangColumnIndex = result.donHangColumnIndex;
+        // Thêm tiêu đề cột (theo header CSV cũ - giống tab Lệnh sản xuất)
+        const headers = [
+            'ID', 'Hiển thị trên sổ', 'Loại xuất kho', 'Ngày hạch toán (*)', 'Ngày chứng từ (*)',
+            'Số chứng từ (*)', 'Mẫu số HĐ', 'Ký hiệu HĐ', 'Mã đối tượng', 'Tên đối tượng',
+            'Địa chỉ/Bộ phận', 'Tên người nhận/Của', 'Lý do xuất/Về việc', 'Nhân viên bán hàng',
+            'Kèm theo', 'Số lệnh điều động', 'Ngày lệnh điều động', 'Người vận chuyển',
+            'Tên người vận chuyển', 'Hợp đồng số', 'Phương tiện vận chuyển', 'Xuất tại kho',
+            'Địa chỉ kho xuất', 'Nhập tại chi nhánh', 'Tên chi nhánh', 'MST chi nhánh',
+            'Nhập tại kho', 'Địa chỉ kho nhập', 'Mã hàng (*)', 'Tên hàng', 'Là hàng khuyến mại',
+            'Kho (*)', 'Hàng hóa giữ hộ/bán hộ', 'TK Nợ (*)', 'TK Có (*)', 'ĐVT', 'Số lượng',
+            'Đơn giá bán', 'Thành tiền', 'Đơn giá vốn', 'Tiền vốn', 'Số lô', 'Hạn sử dụng',
+            'Đối tượng', 'Khoản mục CP', 'Đơn vị', 'Đối tượng THCP', 'Công trình', 'Đơn đặt hàng',
+            'Hợp đồng bán', 'CP không hợp lý', 'Mã thống kê', 'm_vt_1', 'kt_m_vt_1', 'sl_m_vt_1',
+            'm_vt_2', 'kt_m_vt_2', 'sl_m_vt_2', 'm_vt_3', 'kt_m_vt_3', 'sl_m_vt_3', 'm_vt_4',
+            'kt_m_vt_4', 'sl_m_vt_4', 'm_vt_5', 'kt_m_vt_5', 'sl_m_vt_5', 'm_vt_6', 'kt_m_vt_6',
+            'sl_m_vt_6', 'm_vt_7', 'kt_m_vt_7', 'sl_m_vt_7', 'm_vt_8', 'kt_m_vt_8', 'sl_m_vt_8',
+            'm_vt_9', 'kt_m_vt_9', 'sl_m_vt_9', 'm_vt_10', 'kt_m_vt_10', 'sl_m_vt_10', 'm_vt_11',
+            'kt_m_vt_11', 'sl_m_vt_11', 'm_vt_12', 'kt_m_vt_12', 'sl_m_vt_12', 'm_vt_13',
+            'kt_m_vt_13', 'sl_m_vt_13', 'm_vt_14', 'kt_m_vt_14', 'sl_m_vt_14', 'm_vt_15',
+            'kt_m_vt_15', 'sl_m_vt_15', 'm_vt_16', 'kt_m_vt_16', 'sl_m_vt_16', 'm_vt_17',
+            'kt_m_vt_17', 'sl_m_vt_17', 'm_vt_18', 'kt_m_vt_18', 'sl_m_vt_18', 'm_vt_19',
+            'kt_m_vt_19', 'sl_m_vt_19', 'm_vt_20', 'kt_m_vt_20', 'sl_m_vt_20', 'm2_vt_1',
+            'kt1_m2_vt_1', 'kt2_m2_vt_1', 'sl_m2_vt_1', 'm2_vt_2', 'kt1_m2_vt_2', 'kt2_m2_vt_2',
+            'sl_m2_vt_2', 'c_vt_1', 'sl_c_vt_1', 'c_vt_2', 'sl_c_vt_2', 'c_vt_3', 'sl_c_vt_3',
+            'c_vt_4', 'sl_c_vt_4', 'c_vt_5', 'sl_c_vt_5', 'c_vt_6', 'sl_c_vt_6', 'c_vt_7',
+            'sl_c_vt_7', 'c_vt_8', 'sl_c_vt_8', 'c_vt_9', 'sl_c_vt_9', 'c_vt_10', 'sl_c_vt_10',
+            'c_vt_11', 'sl_c_vt_11', 'c_vt_12', 'sl_c_vt_12', 'c_vt_13', 'sl_c_vt_13', 'c_vt_14',
+            'sl_c_vt_14', 'c_vt_15', 'sl_c_vt_15', 'c_vt_16', 'sl_c_vt_16', 'c_vt_17',
+            'sl_c_vt_17', 'c_vt_18', 'sl_c_vt_18', 'c_vt_19', 'sl_c_vt_19', 'c_vt_20',
+            'sl_c_vt_20', 'c_vt_21', 'sl_c_vt_21', 'c_vt_22', 'sl_c_vt_22', 'c_vt_23',
+            'sl_c_vt_23', 'c_vt_24', 'sl_c_vt_24', 'c_vt_25', 'sl_c_vt_25', 'c_vt_26',
+            'sl_c_vt_26', 'c_vt_27', 'sl_c_vt_27', 'c_vt_28', 'sl_c_vt_28', 'c_vt_29',
+            'sl_c_vt_29', 'c_vt_30', 'sl_c_vt_30', 'Số bộ'
+        ];
 
-        const maDonHangID = chiTietRow[chiTietColumnIndex['ma_don_hang_id']] || '';
-        const maSanPhamTheoDoi = chiTietRow[chiTietColumnIndex['ma_san_pham_theo_doi']] || '';
-        const dienGiai = chiTietRow[chiTietColumnIndex['dien_giai']] || '';
-        const ghiChu = chiTietRow[chiTietColumnIndex['ghi_chu']] || '';
-        const dvt = chiTietRow[chiTietColumnIndex['dvt']] || '';
-        const soLuong = chiTietRow[chiTietColumnIndex['so_luong']] || '';
-        const khoiLuong = formatNumberForCSV(chiTietRow[chiTietColumnIndex['khoi_luong']] || '');
-        const sttTrongDon = chiTietRow[chiTietColumnIndex['stt_trong_don']] || '';
+        worksheet.addRow(headers);
 
-        const ngayXuatKho = donHangRow[donHangColumnIndex['ngay_xuat_kho']] || '';
-        const xuongSanXuat = donHangRow[donHangColumnIndex['xuong_san_xuat']] || '';
-        const maHopDong = donHangRow[donHangColumnIndex['ma_hop_dong']] || '';
-        const maKhachHangID = donHangRow[donHangColumnIndex['ma_khach_hang_id']] || '';
-        const tenNguoiLienHe = donHangRow[donHangColumnIndex['ten_nguoi_lien_he']] || '';
-        const diaChiChiTiet = donHangRow[donHangColumnIndex['dia_chi_chi_tiet']] || '';
-
-        let tenHang = '';
-        if (dienGiai !== "") {
-            tenHang = dienGiai;
-        } else {
-            tenHang = ghiChu;
-        }
-
-        const mnvCongTy = calculateMnvCongTy(donHangRow, donHangColumnIndex);
-
-        // Xác định kho dựa trên xưởng sản xuất
-        let kho = '';
-        if (xuongSanXuat === "Hà Nội") {
-            kho = "K03_SX.HN_152";
-        } else if (xuongSanXuat === "Long An") {
-            kho = "K04_SX.LA_152";
-        }
-
-        // Xác định đối tượng THCP dựa trên xưởng sản xuất
-        let doiTuongTHCP = '';
-        if (xuongSanXuat === "Hà Nội") {
-            doiTuongTHCP = "25.SXT.X1";
-        } else if (xuongSanXuat === "Long An") {
-            doiTuongTHCP = "25.SXT.X2";
-        }
-
-        // Lấy các trường m_vt, kt_m_vt, sl_m_vt (từ 1 đến 20) - tương tự như tab lệnh sản xuất
-        // Để ngắn gọn, tôi sẽ không liệt kê hết 20 trường ở đây. Bạn có thể copy từ hàm exportToExcelLenSanXuat.
-        const m_vt_1 = chiTietRow[chiTietColumnIndex['m_vt_1']] || '';
-        const kt_m_vt_1 = chiTietRow[chiTietColumnIndex['kt_m_vt_1']] || '';
-        const sl_m_vt_1 = formatNumberForCSV(chiTietRow[chiTietColumnIndex['sl_m_vt_1']] || '');
-        const m_vt_2 = chiTietRow[chiTietColumnIndex['m_vt_2']] || '';
-        const kt_m_vt_2 = chiTietRow[chiTietColumnIndex['kt_m_vt_2']] || '';
-        const sl_m_vt_2 = formatNumberForCSV(chiTietRow[chiTietColumnIndex['sl_m_vt_2']] || '');
-        const m_vt_3 = chiTietRow[chiTietColumnIndex['m_vt_3']] || '';
-        const kt_m_vt_3 = chiTietRow[chiTietColumnIndex['kt_m_vt_3']] || '';
-        const sl_m_vt_3 = formatNumberForCSV(chiTietRow[chiTietColumnIndex['sl_m_vt_3']] || '');
-        const m_vt_4 = chiTietRow[chiTietColumnIndex['m_vt_4']] || '';
-        const kt_m_vt_4 = chiTietRow[chiTietColumnIndex['kt_m_vt_4']] || '';
-        const sl_m_vt_4 = formatNumberForCSV(chiTietRow[chiTietColumnIndex['sl_m_vt_4']] || '');
-        const m_vt_5 = chiTietRow[chiTietColumnIndex['m_vt_5']] || '';
-        const kt_m_vt_5 = chiTietRow[chiTietColumnIndex['kt_m_vt_5']] || '';
-        const sl_m_vt_5 = formatNumberForCSV(chiTietRow[chiTietColumnIndex['sl_m_vt_5']] || '');
-        const m_vt_6 = chiTietRow[chiTietColumnIndex['m_vt_6']] || '';
-        const kt_m_vt_6 = chiTietRow[chiTietColumnIndex['kt_m_vt_6']] || '';
-        const sl_m_vt_6 = formatNumberForCSV(chiTietRow[chiTietColumnIndex['sl_m_vt_6']] || '');
-        const m_vt_7 = chiTietRow[chiTietColumnIndex['m_vt_7']] || '';
-        const kt_m_vt_7 = chiTietRow[chiTietColumnIndex['kt_m_vt_7']] || '';
-        const sl_m_vt_7 = formatNumberForCSV(chiTietRow[chiTietColumnIndex['sl_m_vt_7']] || '');
-        const m_vt_8 = chiTietRow[chiTietColumnIndex['m_vt_8']] || '';
-        const kt_m_vt_8 = chiTietRow[chiTietColumnIndex['kt_m_vt_8']] || '';
-        const sl_m_vt_8 = formatNumberForCSV(chiTietRow[chiTietColumnIndex['sl_m_vt_8']] || '');
-        const m_vt_9 = chiTietRow[chiTietColumnIndex['m_vt_9']] || '';
-        const kt_m_vt_9 = chiTietRow[chiTietColumnIndex['kt_m_vt_9']] || '';
-        const sl_m_vt_9 = formatNumberForCSV(chiTietRow[chiTietColumnIndex['sl_m_vt_9']] || '');
-        const m_vt_10 = chiTietRow[chiTietColumnIndex['m_vt_10']] || '';
-        const kt_m_vt_10 = chiTietRow[chiTietColumnIndex['kt_m_vt_10']] || '';
-        const sl_m_vt_10 = formatNumberForCSV(chiTietRow[chiTietColumnIndex['sl_m_vt_10']] || '');
-        const m_vt_11 = chiTietRow[chiTietColumnIndex['m_vt_11']] || '';
-        const kt_m_vt_11 = chiTietRow[chiTietColumnIndex['kt_m_vt_11']] || '';
-        const sl_m_vt_11 = formatNumberForCSV(chiTietRow[chiTietColumnIndex['sl_m_vt_11']] || '');
-        const m_vt_12 = chiTietRow[chiTietColumnIndex['m_vt_12']] || '';
-        const kt_m_vt_12 = chiTietRow[chiTietColumnIndex['kt_m_vt_12']] || '';
-        const sl_m_vt_12 = formatNumberForCSV(chiTietRow[chiTietColumnIndex['sl_m_vt_12']] || '');
-        const m_vt_13 = chiTietRow[chiTietColumnIndex['m_vt_13']] || '';
-        const kt_m_vt_13 = chiTietRow[chiTietColumnIndex['kt_m_vt_13']] || '';
-        const sl_m_vt_13 = formatNumberForCSV(chiTietRow[chiTietColumnIndex['sl_m_vt_13']] || '');
-        const m_vt_14 = chiTietRow[chiTietColumnIndex['m_vt_14']] || '';
-        const kt_m_vt_14 = chiTietRow[chiTietColumnIndex['kt_m_vt_14']] || '';
-        const sl_m_vt_14 = formatNumberForCSV(chiTietRow[chiTietColumnIndex['sl_m_vt_14']] || '');
-        const m_vt_15 = chiTietRow[chiTietColumnIndex['m_vt_15']] || '';
-        const kt_m_vt_15 = chiTietRow[chiTietColumnIndex['kt_m_vt_15']] || '';
-        const sl_m_vt_15 = formatNumberForCSV(chiTietRow[chiTietColumnIndex['sl_m_vt_15']] || '');
-        const m_vt_16 = chiTietRow[chiTietColumnIndex['m_vt_16']] || '';
-        const kt_m_vt_16 = chiTietRow[chiTietColumnIndex['kt_m_vt_16']] || '';
-        const sl_m_vt_16 = formatNumberForCSV(chiTietRow[chiTietColumnIndex['sl_m_vt_16']] || '');
-        const m_vt_17 = chiTietRow[chiTietColumnIndex['m_vt_17']] || '';
-        const kt_m_vt_17 = chiTietRow[chiTietColumnIndex['kt_m_vt_17']] || '';
-        const sl_m_vt_17 = formatNumberForCSV(chiTietRow[chiTietColumnIndex['sl_m_vt_17']] || '');
-        const m_vt_18 = chiTietRow[chiTietColumnIndex['m_vt_18']] || '';
-        const kt_m_vt_18 = chiTietRow[chiTietColumnIndex['kt_m_vt_18']] || '';
-        const sl_m_vt_18 = formatNumberForCSV(chiTietRow[chiTietColumnIndex['sl_m_vt_18']] || '');
-        const m_vt_19 = chiTietRow[chiTietColumnIndex['m_vt_19']] || '';
-        const kt_m_vt_19 = chiTietRow[chiTietColumnIndex['kt_m_vt_19']] || '';
-        const sl_m_vt_19 = formatNumberForCSV(chiTietRow[chiTietColumnIndex['sl_m_vt_19']] || '');
-        const m_vt_20 = chiTietRow[chiTietColumnIndex['m_vt_20']] || '';
-        const kt_m_vt_20 = chiTietRow[chiTietColumnIndex['kt_m_vt_20']] || '';
-        const sl_m_vt_20 = formatNumberForCSV(chiTietRow[chiTietColumnIndex['sl_m_vt_20']] || '');
-
-        // Lấy các trường m2_vt, kt1_m2_vt, kt2_m2_vt, sl_m2_vt (1 đến 2)
-        const m2_vt_1 = chiTietRow[chiTietColumnIndex['m2_vt_1']] || '';
-        const kt1_m2_vt_1 = chiTietRow[chiTietColumnIndex['kt1_m2_vt_1']] || '';
-        const kt2_m2_vt_1 = chiTietRow[chiTietColumnIndex['kt2_m2_vt_1']] || '';
-        const sl_m2_vt_1 = formatNumberForCSV(chiTietRow[chiTietColumnIndex['sl_m2_vt_1']] || '');
-        const m2_vt_2 = chiTietRow[chiTietColumnIndex['m2_vt_2']] || '';
-        const kt1_m2_vt_2 = chiTietRow[chiTietColumnIndex['kt1_m2_vt_2']] || '';
-        const kt2_m2_vt_2 = chiTietRow[chiTietColumnIndex['kt2_m2_vt_2']] || '';
-        const sl_m2_vt_2 = formatNumberForCSV(chiTietRow[chiTietColumnIndex['sl_m2_vt_2']] || '');
-
-        // Lấy các trường c_vt, sl_c_vt (1 đến 30)
-        const c_vt_1 = chiTietRow[chiTietColumnIndex['c_vt_1']] || '';
-        const sl_c_vt_1 = formatNumberForCSV(chiTietRow[chiTietColumnIndex['sl_c_vt_1']] || '');
-        const c_vt_2 = chiTietRow[chiTietColumnIndex['c_vt_2']] || '';
-        const sl_c_vt_2 = formatNumberForCSV(chiTietRow[chiTietColumnIndex['sl_c_vt_2']] || '');
-        const c_vt_3 = chiTietRow[chiTietColumnIndex['c_vt_3']] || '';
-        const sl_c_vt_3 = formatNumberForCSV(chiTietRow[chiTietColumnIndex['sl_c_vt_3']] || '');
-        const c_vt_4 = chiTietRow[chiTietColumnIndex['c_vt_4']] || '';
-        const sl_c_vt_4 = formatNumberForCSV(chiTietRow[chiTietColumnIndex['sl_c_vt_4']] || '');
-        const c_vt_5 = chiTietRow[chiTietColumnIndex['c_vt_5']] || '';
-        const sl_c_vt_5 = formatNumberForCSV(chiTietRow[chiTietColumnIndex['sl_c_vt_5']] || '');
-        const c_vt_6 = chiTietRow[chiTietColumnIndex['c_vt_6']] || '';
-        const sl_c_vt_6 = formatNumberForCSV(chiTietRow[chiTietColumnIndex['sl_c_vt_6']] || '');
-        const c_vt_7 = chiTietRow[chiTietColumnIndex['c_vt_7']] || '';
-        const sl_c_vt_7 = formatNumberForCSV(chiTietRow[chiTietColumnIndex['sl_c_vt_7']] || '');
-        const c_vt_8 = chiTietRow[chiTietColumnIndex['c_vt_8']] || '';
-        const sl_c_vt_8 = formatNumberForCSV(chiTietRow[chiTietColumnIndex['sl_c_vt_8']] || '');
-        const c_vt_9 = chiTietRow[chiTietColumnIndex['c_vt_9']] || '';
-        const sl_c_vt_9 = formatNumberForCSV(chiTietRow[chiTietColumnIndex['sl_c_vt_9']] || '');
-        const c_vt_10 = chiTietRow[chiTietColumnIndex['c_vt_10']] || '';
-        const sl_c_vt_10 = formatNumberForCSV(chiTietRow[chiTietColumnIndex['sl_c_vt_10']] || '');
-        const c_vt_11 = chiTietRow[chiTietColumnIndex['c_vt_11']] || '';
-        const sl_c_vt_11 = formatNumberForCSV(chiTietRow[chiTietColumnIndex['sl_c_vt_11']] || '');
-        const c_vt_12 = chiTietRow[chiTietColumnIndex['c_vt_12']] || '';
-        const sl_c_vt_12 = formatNumberForCSV(chiTietRow[chiTietColumnIndex['sl_c_vt_12']] || '');
-        const c_vt_13 = chiTietRow[chiTietColumnIndex['c_vt_13']] || '';
-        const sl_c_vt_13 = formatNumberForCSV(chiTietRow[chiTietColumnIndex['sl_c_vt_13']] || '');
-        const c_vt_14 = chiTietRow[chiTietColumnIndex['c_vt_14']] || '';
-        const sl_c_vt_14 = formatNumberForCSV(chiTietRow[chiTietColumnIndex['sl_c_vt_14']] || '');
-        const c_vt_15 = chiTietRow[chiTietColumnIndex['c_vt_15']] || '';
-        const sl_c_vt_15 = formatNumberForCSV(chiTietRow[chiTietColumnIndex['sl_c_vt_15']] || '');
-        const c_vt_16 = chiTietRow[chiTietColumnIndex['c_vt_16']] || '';
-        const sl_c_vt_16 = formatNumberForCSV(chiTietRow[chiTietColumnIndex['sl_c_vt_16']] || '');
-        const c_vt_17 = chiTietRow[chiTietColumnIndex['c_vt_17']] || '';
-        const sl_c_vt_17 = formatNumberForCSV(chiTietRow[chiTietColumnIndex['sl_c_vt_17']] || '');
-        const c_vt_18 = chiTietRow[chiTietColumnIndex['c_vt_18']] || '';
-        const sl_c_vt_18 = formatNumberForCSV(chiTietRow[chiTietColumnIndex['sl_c_vt_18']] || '');
-        const c_vt_19 = chiTietRow[chiTietColumnIndex['c_vt_19']] || '';
-        const sl_c_vt_19 = formatNumberForCSV(chiTietRow[chiTietColumnIndex['sl_c_vt_19']] || '');
-        const c_vt_20 = chiTietRow[chiTietColumnIndex['c_vt_20']] || '';
-        const sl_c_vt_20 = formatNumberForCSV(chiTietRow[chiTietColumnIndex['sl_c_vt_20']] || '');
-        const c_vt_21 = chiTietRow[chiTietColumnIndex['c_vt_21']] || '';
-        const sl_c_vt_21 = formatNumberForCSV(chiTietRow[chiTietColumnIndex['sl_c_vt_21']] || '');
-        const c_vt_22 = chiTietRow[chiTietColumnIndex['c_vt_22']] || '';
-        const sl_c_vt_22 = formatNumberForCSV(chiTietRow[chiTietColumnIndex['sl_c_vt_22']] || '');
-        const c_vt_23 = chiTietRow[chiTietColumnIndex['c_vt_23']] || '';
-        const sl_c_vt_23 = formatNumberForCSV(chiTietRow[chiTietColumnIndex['sl_c_vt_23']] || '');
-        const c_vt_24 = chiTietRow[chiTietColumnIndex['c_vt_24']] || '';
-        const sl_c_vt_24 = formatNumberForCSV(chiTietRow[chiTietColumnIndex['sl_c_vt_24']] || '');
-        const c_vt_25 = chiTietRow[chiTietColumnIndex['c_vt_25']] || '';
-        const sl_c_vt_25 = formatNumberForCSV(chiTietRow[chiTietColumnIndex['sl_c_vt_25']] || '');
-        const c_vt_26 = chiTietRow[chiTietColumnIndex['c_vt_26']] || '';
-        const sl_c_vt_26 = formatNumberForCSV(chiTietRow[chiTietColumnIndex['sl_c_vt_26']] || '');
-        const c_vt_27 = chiTietRow[chiTietColumnIndex['c_vt_27']] || '';
-        const sl_c_vt_27 = formatNumberForCSV(chiTietRow[chiTietColumnIndex['sl_c_vt_27']] || '');
-        const c_vt_28 = chiTietRow[chiTietColumnIndex['c_vt_28']] || '';
-        const sl_c_vt_28 = formatNumberForCSV(chiTietRow[chiTietColumnIndex['sl_c_vt_28']] || '');
-        const c_vt_29 = chiTietRow[chiTietColumnIndex['c_vt_29']] || '';
-        const sl_c_vt_29 = formatNumberForCSV(chiTietRow[chiTietColumnIndex['sl_c_vt_29']] || '');
-        const c_vt_30 = chiTietRow[chiTietColumnIndex['c_vt_30']] || '';
-        const sl_c_vt_30 = formatNumberForCSV(chiTietRow[chiTietColumnIndex['sl_c_vt_30']] || '');
-
-
-        // Tạo lý do xuất mới
-        const lyDoXuat = `Xuất BH - ${maKhachHangID} - ${tenNguoiLienHe} - ${diaChiChiTiet} - ${maHopDong}`;
-
-        const escapeCSV = (str) => {
-            if (!str) return '';
-            if (str.includes(',') || str.includes('"') || str.includes('\n')) {
-                return '"' + str.replace(/"/g, '""') + '"';
-            }
-            return str;
+        // Định dạng tiêu đề
+        const headerRow = worksheet.getRow(1);
+        headerRow.font = { bold: true };
+        headerRow.fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: 'FFE0E0E0' }
         };
 
-        // Tạo dòng CSV với tất cả các cột (cần điền đầy đủ các giá trị)
-        // Để ngắn gọn, tôi chỉ điền một số cột, bạn cần điền đầy đủ như trong tab lệnh sản xuất.
-        csvContent += `${escapeCSV(maDonHangID)},${escapeCSV(sttTrongDon)},3,${escapeCSV(ngayXuatKho)},${escapeCSV(ngayXuatKho)},,,,,,,,${escapeCSV(lyDoXuat)}>,${escapeCSV(mnvCongTy)},,,,,,,,,,,,,,,,,,${escapeCSV(kho)},,154,1521,,,,,,,,,,,${escapeCSV(doiTuongTHCP)},${escapeCSV(maSanPhamTheoDoi)},,${escapeCSV(maHopDong)},,,,${escapeCSV(m_vt_1)},${escapeCSV(kt_m_vt_1)},${sl_m_vt_1},${escapeCSV(m_vt_2)},${escapeCSV(kt_m_vt_2)},${sl_m_vt_2},${escapeCSV(m_vt_3)},${escapeCSV(kt_m_vt_3)},${sl_m_vt_3},${escapeCSV(m_vt_4)},${escapeCSV(kt_m_vt_4)},${sl_m_vt_4},${escapeCSV(m_vt_5)},${escapeCSV(kt_m_vt_5)},${sl_m_vt_5},${escapeCSV(m_vt_6)},${escapeCSV(kt_m_vt_6)},${sl_m_vt_6},${escapeCSV(m_vt_7)},${escapeCSV(kt_m_vt_7)},${sl_m_vt_7},${escapeCSV(m_vt_8)},${escapeCSV(kt_m_vt_8)},${sl_m_vt_8},${escapeCSV(m_vt_9)},${escapeCSV(kt_m_vt_9)},${sl_m_vt_9},${escapeCSV(m_vt_10)},${escapeCSV(kt_m_vt_10)},${sl_m_vt_10},${escapeCSV(m_vt_11)},${escapeCSV(kt_m_vt_11)},${sl_m_vt_11},${escapeCSV(m_vt_12)},${escapeCSV(kt_m_vt_12)},${sl_m_vt_12},${escapeCSV(m_vt_13)},${escapeCSV(kt_m_vt_13)},${sl_m_vt_13},${escapeCSV(m_vt_14)},${escapeCSV(kt_m_vt_14)},${sl_m_vt_14},${escapeCSV(m_vt_15)},${escapeCSV(kt_m_vt_15)},${sl_m_vt_15},${escapeCSV(m_vt_16)},${escapeCSV(kt_m_vt_16)},${sl_m_vt_16},${escapeCSV(m_vt_17)},${escapeCSV(kt_m_vt_17)},${sl_m_vt_17},${escapeCSV(m_vt_18)},${escapeCSV(kt_m_vt_18)},${sl_m_vt_18},${escapeCSV(m_vt_19)},${escapeCSV(kt_m_vt_19)},${sl_m_vt_19},${escapeCSV(m_vt_20)},${escapeCSV(kt_m_vt_20)},${sl_m_vt_20},${escapeCSV(m2_vt_1)},${escapeCSV(kt1_m2_vt_1)},${escapeCSV(kt2_m2_vt_1)},${sl_m2_vt_1},${escapeCSV(m2_vt_2)},${escapeCSV(kt1_m2_vt_2)},${escapeCSV(kt2_m2_vt_2)},${sl_m2_vt_2},${escapeCSV(c_vt_1)},${sl_c_vt_1},${escapeCSV(c_vt_2)},${sl_c_vt_2},${escapeCSV(c_vt_3)},${sl_c_vt_3},${escapeCSV(c_vt_4)},${sl_c_vt_4},${escapeCSV(c_vt_5)},${sl_c_vt_5},${escapeCSV(c_vt_6)},${sl_c_vt_6},${escapeCSV(c_vt_7)},${sl_c_vt_7},${escapeCSV(c_vt_8)},${sl_c_vt_8},${escapeCSV(c_vt_9)},${sl_c_vt_9},${escapeCSV(c_vt_10)},${sl_c_vt_10},${escapeCSV(c_vt_11)},${sl_c_vt_11},${escapeCSV(c_vt_12)},${sl_c_vt_12},${escapeCSV(c_vt_13)},${sl_c_vt_13},${escapeCSV(c_vt_14)},${sl_c_vt_14},${escapeCSV(c_vt_15)},${sl_c_vt_15},${escapeCSV(c_vt_16)},${sl_c_vt_16},${escapeCSV(c_vt_17)},${sl_c_vt_17},${escapeCSV(c_vt_18)},${sl_c_vt_18},${escapeCSV(c_vt_19)},${sl_c_vt_19},${escapeCSV(c_vt_20)},${sl_c_vt_20},${escapeCSV(c_vt_21)},${sl_c_vt_21},${escapeCSV(c_vt_22)},${sl_c_vt_22},${escapeCSV(c_vt_23)},${sl_c_vt_23},${escapeCSV(c_vt_24)},${sl_c_vt_24},${escapeCSV(c_vt_25)},${sl_c_vt_25},${escapeCSV(c_vt_26)},${sl_c_vt_26},${escapeCSV(c_vt_27)},${sl_c_vt_27},${escapeCSV(c_vt_28)},${sl_c_vt_28},${escapeCSV(c_vt_29)},${sl_c_vt_29},${escapeCSV(c_vt_30)},${sl_c_vt_30},${soLuong}\n`;                // Lưu ý: Bạn cần thay thế '... và các cột khác ...' bằng các giá trị thực tế của các cột còn lại.
-    });
+        // Điền dữ liệu
+        filteredResultsXuatBaoHanh.forEach((result, index) => {
+            const chiTietRow = result.chiTietRow;
+            const donHangRow = result.donHangRow;
+            const chiTietColumnIndex = result.chiTietColumnIndex;
+            const donHangColumnIndex = result.donHangColumnIndex;
 
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement("a");
-    const url = URL.createObjectURL(blob);
+            // Lấy các giá trị cần thiết
+            const maDonHangID = chiTietRow[chiTietColumnIndex['ma_don_hang_id']] || '';
+            const sttTrongDon = chiTietRow[chiTietColumnIndex['stt_trong_don']] || '';
+            const maSanPhamTheoDoi = chiTietRow[chiTietColumnIndex['ma_san_pham_theo_doi']] || '';
+            const dienGiai = chiTietRow[chiTietColumnIndex['dien_giai']] || '';
+            const ghiChu = chiTietRow[chiTietColumnIndex['ghi_chu']] || '';
+            const dvt = chiTietRow[chiTietColumnIndex['dvt']] || '';
+            const soLuong = chiTietRow[chiTietColumnIndex['so_luong']] || '';
+            const khoiLuong = formatNumberForCSV(chiTietRow[chiTietColumnIndex['khoi_luong']] || '');
 
-    link.setAttribute("href", url);
-    const tuNgayRaw = document.getElementById("tu-ngay-xbh").value;
-    const denNgayRaw = document.getElementById("den-ngay-xbh").value;
-    const tuNgay = formatDateForFilename(tuNgayRaw);
-    const denNgay = formatDateForFilename(denNgayRaw);
-    const loaiDonHang = document.querySelector('input[name="loai-don-hang-xbh"]:checked').value;
-    const fileName = `Danh sách xuất bảo hành - ${tuNgay} - ${denNgay} - ${loaiDonHang}.csv`;
+            const loaiDonHang = donHangRow[donHangColumnIndex['loai_don_hang']] || '';
+            const ngayGiaoHang = donHangRow[donHangColumnIndex['ngay_giao_hang']] || '';
+            const ngayNhapKho = donHangRow[donHangColumnIndex['ngay_nhap_kho']] || '';
+            const xuongSanXuat = donHangRow[donHangColumnIndex['xuong_san_xuat']] || '';
+            const maHopDong = donHangRow[donHangColumnIndex['ma_hop_dong']] || '';
+            const maKhachHangID = donHangRow[donHangColumnIndex['ma_khach_hang']] || '';
+            const tenNguoiLienHe = donHangRow[donHangColumnIndex['ten_nguoi_lien_he']] || '';
+            const diaChiChiTiet = donHangRow[donHangColumnIndex['dia_chi_chi_tiet']] || '';
 
-    link.setAttribute("download", fileName);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+            let ngayHaChToan = '';
+            let ngayChungTu = '';
 
-    showMessageXuatBaoHanh(`Đã xuất ${filteredResultsXuatBaoHanh.length} dòng ra file Excel.`, 'success');
+            if (loaiDonHang === "Yêu cầu kiểm tra") {
+                ngayHaChToan = ngayGiaoHang;
+                ngayChungTu = ngayGiaoHang;
+            } else {
+                ngayHaChToan = ngayNhapKho;
+                ngayChungTu = ngayNhapKho;
+            }
+
+            const mnvCongTy = calculateMnvCongTy(donHangRow, donHangColumnIndex);
+
+            // Xác định kho và đối tượng THCP
+            let kho = '';
+            let doiTuongTHCP = '';
+            if (xuongSanXuat === "Hà Nội") {
+                kho = "K03_SX.HN_152";
+                doiTuongTHCP = "25.SXT.X1";
+            } else if (xuongSanXuat === "Long An") {
+                kho = "K04_SX.LA_152";
+                doiTuongTHCP = "25.SXT.X2";
+            }
+
+            // Lấy tất cả các trường bổ sung (m_vt, m2_vt, c_vt)
+            const getValue = (fieldName) => chiTietRow[chiTietColumnIndex[fieldName]] || '';
+            const getNumberValue = (fieldName) => formatNumberForCSV(getValue(fieldName));
+
+            // Xác định thông tin công trình cho bảo hành
+            const lyDoXuat = `Xuất BH - ${tenNguoiLienHe} - ${diaChiChiTiet} - ${maHopDong}`;
+
+            // Tạo dòng dữ liệu
+            const rowData = [
+                maDonHangID, // ID
+                sttTrongDon, // Hiển thị trên sổ
+                3, // Loại xuất kho
+                ngayHaChToan, // Ngày hạch toán
+                ngayChungTu, // Ngày chứng từ
+                '', // Số chứng từ
+                '', // Mẫu số HĐ
+                '', // Ký hiệu HĐ
+                '', // Mã đối tượng
+                '', // Tên đối tượng
+                '', // Địa chỉ/Bộ phận
+                '', // Tên người nhận/Của
+                lyDoXuat, // Lý do xuất/Về việc
+                mnvCongTy, // Nhân viên bán hàng
+                '', // Kèm theo
+                '', // Số lệnh điều động
+                '', // Ngày lệnh điều động
+                '', // Người vận chuyển
+                '', // Tên người vận chuyển
+                '', // Hợp đồng số
+                '', // Phương tiện vận chuyển
+                '', // Xuất tại kho
+                '', // Địa chỉ kho xuất
+                '', // Nhập tại chi nhánh
+                '', // Tên chi nhánh
+                '', // MST chi nhánh
+                '', // Nhập tại kho
+                '', // Địa chỉ kho nhập
+                '', // Mã hàng
+                '', // Tên hàng
+                ghiChu, // Là hàng khuyến mại
+                kho, // Kho
+                '', // Hàng hóa giữ hộ/bán hộ
+                154, // TK Nợ
+                1521, // TK Có
+                '', // ĐVT
+                '', // Số lượng
+                '', // Đơn giá bán
+                '', // Thành tiền
+                '', // Đơn giá vốn
+                '', // Tiền vốn
+                '', // Số lô
+                '', // Hạn sử dụng
+                '', // Đối tượng
+                '', // Khoản mục CP
+                doiTuongTHCP, // Đơn vị
+                maSanPhamTheoDoi, // Đối tượng THCP
+                '', // Công trình
+                maHopDong, // Đơn đặt hàng
+                '', // Hợp đồng bán
+                '', // CP không hợp lý
+                '', // Mã thống kê
+                // Các trường m_vt (1-20)
+                getValue('m_vt_1'), getValue('kt_m_vt_1'), getNumberValue('sl_m_vt_1'),
+                getValue('m_vt_2'), getValue('kt_m_vt_2'), getNumberValue('sl_m_vt_2'),
+                getValue('m_vt_3'), getValue('kt_m_vt_3'), getNumberValue('sl_m_vt_3'),
+                getValue('m_vt_4'), getValue('kt_m_vt_4'), getNumberValue('sl_m_vt_4'),
+                getValue('m_vt_5'), getValue('kt_m_vt_5'), getNumberValue('sl_m_vt_5'),
+                getValue('m_vt_6'), getValue('kt_m_vt_6'), getNumberValue('sl_m_vt_6'),
+                getValue('m_vt_7'), getValue('kt_m_vt_7'), getNumberValue('sl_m_vt_7'),
+                getValue('m_vt_8'), getValue('kt_m_vt_8'), getNumberValue('sl_m_vt_8'),
+                getValue('m_vt_9'), getValue('kt_m_vt_9'), getNumberValue('sl_m_vt_9'),
+                getValue('m_vt_10'), getValue('kt_m_vt_10'), getNumberValue('sl_m_vt_10'),
+                getValue('m_vt_11'), getValue('kt_m_vt_11'), getNumberValue('sl_m_vt_11'),
+                getValue('m_vt_12'), getValue('kt_m_vt_12'), getNumberValue('sl_m_vt_12'),
+                getValue('m_vt_13'), getValue('kt_m_vt_13'), getNumberValue('sl_m_vt_13'),
+                getValue('m_vt_14'), getValue('kt_m_vt_14'), getNumberValue('sl_m_vt_14'),
+                getValue('m_vt_15'), getValue('kt_m_vt_15'), getNumberValue('sl_m_vt_15'),
+                getValue('m_vt_16'), getValue('kt_m_vt_16'), getNumberValue('sl_m_vt_16'),
+                getValue('m_vt_17'), getValue('kt_m_vt_17'), getNumberValue('sl_m_vt_17'),
+                getValue('m_vt_18'), getValue('kt_m_vt_18'), getNumberValue('sl_m_vt_18'),
+                getValue('m_vt_19'), getValue('kt_m_vt_19'), getNumberValue('sl_m_vt_19'),
+                getValue('m_vt_20'), getValue('kt_m_vt_20'), getNumberValue('sl_m_vt_20'),
+                // Các trường m2_vt (1-2)
+                getValue('m2_vt_1'), getValue('kt1_m2_vt_1'), getValue('kt2_m2_vt_1'), getNumberValue('sl_m2_vt_1'),
+                getValue('m2_vt_2'), getValue('kt1_m2_vt_2'), getValue('kt2_m2_vt_2'), getNumberValue('sl_m2_vt_2'),
+                // Các trường c_vt (1-30)
+                getValue('c_vt_1'), getNumberValue('sl_c_vt_1'),
+                getValue('c_vt_2'), getNumberValue('sl_c_vt_2'),
+                getValue('c_vt_3'), getNumberValue('sl_c_vt_3'),
+                getValue('c_vt_4'), getNumberValue('sl_c_vt_4'),
+                getValue('c_vt_5'), getNumberValue('sl_c_vt_5'),
+                getValue('c_vt_6'), getNumberValue('sl_c_vt_6'),
+                getValue('c_vt_7'), getNumberValue('sl_c_vt_7'),
+                getValue('c_vt_8'), getNumberValue('sl_c_vt_8'),
+                getValue('c_vt_9'), getNumberValue('sl_c_vt_9'),
+                getValue('c_vt_10'), getNumberValue('sl_c_vt_10'),
+                getValue('c_vt_11'), getNumberValue('sl_c_vt_11'),
+                getValue('c_vt_12'), getNumberValue('sl_c_vt_12'),
+                getValue('c_vt_13'), getNumberValue('sl_c_vt_13'),
+                getValue('c_vt_14'), getNumberValue('sl_c_vt_14'),
+                getValue('c_vt_15'), getNumberValue('sl_c_vt_15'),
+                getValue('c_vt_16'), getNumberValue('sl_c_vt_16'),
+                getValue('c_vt_17'), getNumberValue('sl_c_vt_17'),
+                getValue('c_vt_18'), getNumberValue('sl_c_vt_18'),
+                getValue('c_vt_19'), getNumberValue('sl_c_vt_19'),
+                getValue('c_vt_20'), getNumberValue('sl_c_vt_20'),
+                getValue('c_vt_21'), getNumberValue('sl_c_vt_21'),
+                getValue('c_vt_22'), getNumberValue('sl_c_vt_22'),
+                getValue('c_vt_23'), getNumberValue('sl_c_vt_23'),
+                getValue('c_vt_24'), getNumberValue('sl_c_vt_24'),
+                getValue('c_vt_25'), getNumberValue('sl_c_vt_25'),
+                getValue('c_vt_26'), getNumberValue('sl_c_vt_26'),
+                getValue('c_vt_27'), getNumberValue('sl_c_vt_27'),
+                getValue('c_vt_28'), getNumberValue('sl_c_vt_28'),
+                getValue('c_vt_29'), getNumberValue('sl_c_vt_29'),
+                getValue('c_vt_30'), getNumberValue('sl_c_vt_30'),
+                soLuong // Số bộ
+            ];
+
+            worksheet.addRow(rowData);
+        });
+
+        // Tự động điều chỉnh độ rộng cột
+        worksheet.columns.forEach(column => {
+            let maxLength = 0;
+            column.eachCell({ includeEmpty: true }, cell => {
+                const cellLength = cell.value ? cell.value.toString().length : 10;
+                if (cellLength > maxLength) {
+                    maxLength = cellLength;
+                }
+            });
+            column.width = maxLength < 10 ? 10 : maxLength + 2;
+        });
+
+        // Tạo tên file và tải về
+        const tuNgayRaw = document.getElementById("tu-ngay-xbh").value;
+        const denNgayRaw = document.getElementById("den-ngay-xbh").value;
+        const tuNgay = formatDateForFilename(tuNgayRaw);
+        const denNgay = formatDateForFilename(denNgayRaw);
+        const loaiDonHang = document.querySelector('input[name="loai-don-hang-xbh"]:checked').value;
+
+        const outputBuffer = await workbook.xlsx.writeBuffer();
+        const blob = new Blob([outputBuffer], {
+            type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        });
+
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        const fileName = `Danh sách xuất bảo hành - ${tuNgay} - ${denNgay} - ${loaiDonHang}.xlsx`;
+        link.download = fileName;
+        link.click();
+
+        showMessageXuatBaoHanh(`Đã xuất ${filteredResultsXuatBaoHanh.length} dòng ra file Excel.`, 'success');
+
+    } catch (error) {
+        console.error('Lỗi xuất Excel:', error);
+        showMessageXuatBaoHanh('Không thể xuất Excel. Vui lòng thử lại.', 'error');
+    }
 }
 
 function showLoadingXuatBaoHanh(show) {
