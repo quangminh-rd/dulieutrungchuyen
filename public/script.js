@@ -2513,7 +2513,7 @@ async function exportToExcelXuat() {
                 '', // Tỷ lệ tính thuế
                 '', // Tiền thuế GTGT
                 '', // Tiền thuế GTGT quy đổi
-                '', // TK thuế GTGT
+                33311, // TK thuế GTGT
                 '', // HH không TH
                 kho, // Kho
                 632, // TK giá vốn
