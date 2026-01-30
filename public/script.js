@@ -878,6 +878,28 @@ function formatNumberForCSV(value) {
     return num;
 }
 
+function convertDateToExcelSerial(dateStr) {
+    if (!dateStr) return '';
+
+    // dateStr dạng dd/mm/yyyy
+    const parts = dateStr.split('/');
+    if (parts.length !== 3) return dateStr;
+
+    const dd = parseInt(parts[0], 10);
+    const mm = parseInt(parts[1], 10);
+    const yyyy = parseInt(parts[2], 10);
+
+    if (!dd || !mm || !yyyy) return dateStr;
+
+    // Tạo Date theo UTC để tránh lệch ngày do timezone
+    const dateObj = new Date(Date.UTC(yyyy, mm - 1, dd));
+
+    // Excel serial: tính từ 1899-12-30
+    const excelEpoch = new Date(Date.UTC(1899, 11, 30));
+    const diffDays = Math.floor((dateObj - excelEpoch) / (1000 * 60 * 60 * 24));
+
+    return diffDays;
+}
 // Format ngày từ input date (yyyy-mm-dd) → dd.mm.yyyy
 function formatDateForFilename(dateStr) {
     if (!dateStr) return "";
@@ -1215,7 +1237,7 @@ async function exportToExcelKhachHang() {
             const fax = row[columnIndex['fax']] || '';
             const emailKhachHang = row[columnIndex['email_khach_hang']] || '';
             const donViPhuTrach = row[columnIndex['don_vi_phu_trach']] || '';
-            const ngayPhatSinh = row[columnIndex['ngay_phat_sinh']] || '';
+            const ngayPhatSinh = convertDateToExcelSerial(row[columnIndex['ngay_phat_sinh']] || '');
 
             // Các cột bổ sung
             const soCmnd = row[columnIndex['so_cmnd']] || '';
@@ -1809,11 +1831,11 @@ async function exportToExcelNhap() {
             let ngayChungTu = '';
 
             if (loaiDonHang === "Yêu cầu kiểm tra") {
-                ngayHaChToan = ngayGiaoHang;
-                ngayChungTu = ngayGiaoHang;
+                ngayHaChToan = convertDateToExcelSerial(ngayGiaoHang);
+                ngayChungTu = convertDateToExcelSerial(ngayGiaoHang);
             } else {
-                ngayHaChToan = ngayNhapKho;
-                ngayChungTu = ngayNhapKho;
+                ngayHaChToan = convertDateToExcelSerial(ngayNhapKho);
+                ngayChungTu = convertDateToExcelSerial(ngayNhapKho);
             }
 
             let kho = '';
@@ -2415,11 +2437,11 @@ async function exportToExcelXuat() {
             let ngayChungTu = '';
 
             if (loaiDonHang === "Yêu cầu kiểm tra") {
-                ngayHaChToan = ngayGiaoHang;
-                ngayChungTu = ngayGiaoHang;
+                ngayHaChToan = convertDateToExcelSerial(ngayGiaoHang);
+                ngayChungTu = convertDateToExcelSerial(ngayGiaoHang);
             } else {
-                ngayHaChToan = ngayXuatKho;
-                ngayChungTu = ngayXuatKho;
+                ngayHaChToan = convertDateToExcelSerial(ngayXuatKho);
+                ngayChungTu = convertDateToExcelSerial(ngayXuatKho);
             }
 
             let maKhachHang = '';
@@ -3301,11 +3323,11 @@ async function exportToExcelLenSanXuat() {
             let ngayChungTu = '';
 
             if (loaiDonHang === "Yêu cầu kiểm tra") {
-                ngayHaChToan = ngayGiaoHang;
-                ngayChungTu = ngayGiaoHang;
+                ngayHaChToan = convertDateToExcelSerial(ngayGiaoHang);
+                ngayChungTu = convertDateToExcelSerial(ngayGiaoHang);
             } else {
-                ngayHaChToan = ngayNhapKho;
-                ngayChungTu = ngayNhapKho;
+                ngayHaChToan = convertDateToExcelSerial(ngayNhapKho);
+                ngayChungTu = convertDateToExcelSerial(ngayNhapKho);
             }
 
             const mnvCongTy = calculateMnvCongTy(donHangRow, donHangColumnIndex);
@@ -4209,11 +4231,11 @@ async function exportToExcelXuatBaoHanh() {
             let ngayChungTu = '';
 
             if (loaiDonHang === "Yêu cầu kiểm tra") {
-                ngayHaChToan = ngayGiaoHang;
-                ngayChungTu = ngayGiaoHang;
+                ngayHaChToan = convertDateToExcelSerial(ngayGiaoHang);
+                ngayChungTu = convertDateToExcelSerial(ngayGiaoHang);
             } else {
-                ngayHaChToan = ngayNhapKho;
-                ngayChungTu = ngayNhapKho;
+                ngayHaChToan = convertDateToExcelSerial(ngayNhapKho);
+                ngayChungTu = convertDateToExcelSerial(ngayNhapKho);
             }
 
             const mnvCongTy = calculateMnvCongTy(donHangRow, donHangColumnIndex);
