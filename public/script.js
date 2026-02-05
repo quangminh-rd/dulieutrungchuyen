@@ -3,14 +3,17 @@ const SPREADSHEET_ID = '14R9efcJ2hGE3mCgmJqi6TNbqkm4GFe91LEAuCyCa4O0';
 const SPREADSHEET_ID_DANH_SACH_NGUOI_DUNG = '1GSakZ33O0JLrD2Mewl-EAHPBviokl8cLtI5pF1VIT6g';
 const SPREADSHEET_ID_DANH_SACH_KHACH_HANG = '1sG87qCUvIZtuJbAv1vS2VRDmHG0ADwFBZQcNR-AzV9Q';
 const SPREADSHEET_ID_GIAO_HANG = '1upjqkhTozefUFiugBeHh0sX9MgNhOtt-QJIh7By2rmY';
+const SPREADSHEET_ID_XUAT_CHUYEN_KHO = '1kb0cieDcUElLmMaEcsNPptIXJs0ZNAu_aaCcmU0aDAU';
 const API_KEY = 'AIzaSyA9g2qFUolpsu3_HVHOebdZb0NXnQgXlFM';
 
 // Phạm vi dữ liệu
 const RANGE_DON_HANG = 'don_hang!A:CS';
 const RANGE_DON_HANG_CHI_TIET = 'don_hang_chi_tiet!A:GF';
-const RANGE_DANH_SACH_NGUOI_DUNG = 'danh_sach_nguoi_dung!A:Z';
-const RANGE_DANH_SACH_KHACH_HANG = 'danh_sach_khach_hang!A:Z';
-const RANGE_GIAO_HANG = 'giao_hang!A:Z';
+const RANGE_DANH_SACH_NGUOI_DUNG = 'danh_sach_nguoi_dung!A:AH';
+const RANGE_DANH_SACH_KHACH_HANG = 'danh_sach_khach_hang!A:AC';
+const RANGE_GIAO_HANG = 'giao_hang!A:AF';
+const RANGE_XUAT_CHUYEN_KHO = 'xuat_chuyen_kho!A:S';
+const RANGE_XUAT_CHUYEN_KHO_CHI_TIET = 'xuat_chuyen_kho_chi_tiet!A:Q';
 
 // Biến lưu trữ dữ liệu (chung cho cả ba tab)
 let donHangData = [];
@@ -18,12 +21,16 @@ let donHangChiTietData = [];
 let danhSachNguoiDungData = [];
 let danhSachKhachHangData = [];
 let giaoHangData = [];
+let xuatChuyenKhoData = [];
+let xuatChuyenKhoChiTietData = [];
+let filteredResultsXuatYeuCau = [];
 
 // Lookup tables (chung)
 let lookupNguoiDungByMaNV = {};
 let lookupNguoiDungByTenNV = {};
 let lookupKhachHangById = {};
 let lookupGiaoHangByMaBoHang = {};
+let lookupPhieuByMaPhieu = {}; // Map từ mã phiếu sang thông tin phiếu
 
 // Biến kiểm tra đã tải dữ liệu chưa
 let isDataLoaded = false;
@@ -88,12 +95,13 @@ async function initialLoadData() {
         updateConnectionStatus('Đã tải dữ liệu', '#e8f7e8', '#0c9c07');
         isDataLoaded = true;
 
-        // Khởi tạo event listeners cho cả 5 tab
+        // Khởi tạo event listeners cho cả 6 tab
         initKhachHangEventListeners();
         initNhapKhoEventListeners();
         initXuatKhoEventListeners();
         initLenSanXuatEventListeners();
         initXuatBaoHanhEventListeners();
+        initXuatYeuCauEventListeners();
 
     } catch (error) {
         console.error('Lỗi khi tải dữ liệu ban đầu:', error);
@@ -126,6 +134,14 @@ async function fetchDataFromSheets() {
             gapi.client.sheets.spreadsheets.values.get({
                 spreadsheetId: SPREADSHEET_ID_GIAO_HANG,
                 range: RANGE_GIAO_HANG,
+            }),
+            gapi.client.sheets.spreadsheets.values.get({
+                spreadsheetId: SPREADSHEET_ID_XUAT_CHUYEN_KHO,
+                range: RANGE_XUAT_CHUYEN_KHO,
+            }),
+            gapi.client.sheets.spreadsheets.values.get({
+                spreadsheetId: SPREADSHEET_ID_XUAT_CHUYEN_KHO,
+                range: RANGE_XUAT_CHUYEN_KHO_CHI_TIET,
             })
         ];
 
@@ -137,9 +153,8 @@ async function fetchDataFromSheets() {
         danhSachNguoiDungData = results[2].result.values || [];
         danhSachKhachHangData = results[3].result.values || [];
         giaoHangData = results[4].result.values || [];
-
-        console.log(`Đã tải ${donHangData.length - 1} dòng từ sheet don_hang`);
-        console.log(`Đã tải ${donHangChiTietData.length - 1} dòng từ sheet don_hang_chi_tiet`);
+        xuatChuyenKhoData = results[5].result.values || [];
+        xuatChuyenKhoChiTietData = results[6].result.values || [];
 
         // Xây dựng lookup tables
         buildLookupTables();
@@ -160,6 +175,11 @@ async function fetchDataFromSheets() {
 
         // Cập nhật options cho select xưởng sản xuất
         updateXuongSanXuatOptions();
+
+        // Cập nhật options cho tab xuất yêu cầu
+        updateMaPhieuOptions();
+        updateXuongSanXuatOptionsForXuatYeuCau();
+        updateLoaiPhieuOptionsForXuatYeuCau();
 
         updateConnectionStatus('Đã tải dữ liệu', '#e8f7e8', '#0c9c07');
         isDataLoaded = true;
@@ -229,6 +249,27 @@ function buildLookupTables() {
 
             if (maBoHang) {
                 lookupGiaoHangByMaBoHang[maBoHang] = { loaiViec, nguoiGiaoHang };
+            }
+        }
+    }
+
+    // Xây dựng lookup từ xuat_chuyen_kho
+    if (xuatChuyenKhoData.length > 0) {
+        const headers = xuatChuyenKhoData[0];
+        const maPhieuXuatIndex = headers.indexOf('ma_phieu_xuat');
+        const loaiPhieuIndex = headers.indexOf('loai_phieu');
+        const xuongSxIndex = headers.indexOf('xuong_sx');
+        const ngayXuatIndex = headers.indexOf('ngay_xuat');
+
+        for (let i = 1; i < xuatChuyenKhoData.length; i++) {
+            const row = xuatChuyenKhoData[i];
+            const maPhieuXuat = maPhieuXuatIndex >= 0 ? row[maPhieuXuatIndex] : '';
+            const loaiPhieu = loaiPhieuIndex >= 0 ? row[loaiPhieuIndex] : '';
+            const xuongSx = xuongSxIndex >= 0 ? row[xuongSxIndex] : '';
+            const ngayXuat = ngayXuatIndex >= 0 ? row[ngayXuatIndex] : '';
+
+            if (maPhieuXuat) {
+                lookupPhieuByMaPhieu[maPhieuXuat] = { loaiPhieu, xuongSx, ngayXuat };
             }
         }
     }
@@ -821,6 +862,302 @@ function updateXuongSanXuatOptions() {
     });
 }
 
+// Cập nhật options cho select mã phiếu (dạng multi-select)
+function updateMaPhieuOptions() {
+    if (xuatChuyenKhoChiTietData.length === 0) return;
+
+    const chiTietHeaders = xuatChuyenKhoChiTietData[0];
+    const maPhieuXuatIdIndex = chiTietHeaders.indexOf('ma_phieu_xuat_id');
+    if (maPhieuXuatIdIndex === -1) return;
+
+    // Lấy danh sách mã phiếu duy nhất
+    const maPhieuValues = new Set();
+    for (let i = 1; i < xuatChuyenKhoChiTietData.length; i++) {
+        const value = xuatChuyenKhoChiTietData[i][maPhieuXuatIdIndex];
+        if (value && value.trim() !== '') {
+            maPhieuValues.add(value.trim());
+        }
+    }
+
+    const sortedValues = Array.from(maPhieuValues).sort();
+
+    // Container element
+    const containerElement = document.getElementById('ma-phieu-xuat-yeu-cau-container');
+    if (!containerElement) return;
+
+    // Xóa nội dung cũ
+    containerElement.innerHTML = '';
+
+    // Tạo input tìm kiếm
+    const searchInput = document.createElement('input');
+    searchInput.type = 'text';
+    searchInput.className = 'multi-select-search';
+    searchInput.placeholder = 'Tìm kiếm mã phiếu...';
+    searchInput.id = 'ma-phieu-search-xuat-yeu-cau';
+
+    containerElement.appendChild(searchInput);
+
+    // Tạo checkbox "Tất cả mã phiếu" (mặc định được chọn)
+    const allOptionDiv = document.createElement('div');
+    allOptionDiv.className = 'multi-select-option select-all-option';
+
+    const allCheckbox = document.createElement('input');
+    allCheckbox.type = 'checkbox';
+    allCheckbox.id = 'ma-phieu-xuat-yeu-cau-all';
+    allCheckbox.checked = true;
+
+    const allLabel = document.createElement('label');
+    allLabel.htmlFor = 'ma-phieu-xuat-yeu-cau-all';
+    allLabel.textContent = 'Tất cả mã phiếu';
+
+    allOptionDiv.appendChild(allCheckbox);
+    allOptionDiv.appendChild(allLabel);
+    containerElement.appendChild(allOptionDiv);
+
+    // Thêm sự kiện cho checkbox "Tất cả mã phiếu"
+    allCheckbox.addEventListener('change', function () {
+        const checkboxes = containerElement.querySelectorAll('input[type="checkbox"]:not(#ma-phieu-xuat-yeu-cau-all)');
+        checkboxes.forEach(checkbox => {
+            checkbox.checked = this.checked;
+            updateMaPhieuLabel(); // Cập nhật label
+        });
+        requireRefilterXuatYeuCau();
+    });
+
+    // Add options mới
+    sortedValues.forEach(value => {
+        const optionDiv = document.createElement('div');
+        optionDiv.className = 'multi-select-option';
+
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.id = `ma-phieu-xuat-yeu-cau-${value.replace(/\s+/g, '-')}`;
+        checkbox.value = value;
+
+        const label = document.createElement('label');
+        label.htmlFor = checkbox.id;
+        label.textContent = value;
+
+        optionDiv.appendChild(checkbox);
+        optionDiv.appendChild(label);
+        containerElement.appendChild(optionDiv);
+
+        // Thêm sự kiện cho từng checkbox
+        checkbox.addEventListener('change', function () {
+            const allCheckbox = document.getElementById('ma-phieu-xuat-yeu-cau-all');
+            const checkboxes = containerElement.querySelectorAll('input[type="checkbox"]:not(#ma-phieu-xuat-yeu-cau-all)');
+            const checkedCount = Array.from(checkboxes).filter(cb => cb.checked).length;
+
+            if (checkedCount === checkboxes.length) {
+                allCheckbox.checked = true;
+            } else if (checkedCount === 0) {
+                allCheckbox.checked = true;
+            } else {
+                allCheckbox.checked = false;
+            }
+
+            updateMaPhieuLabel(); // Cập nhật label
+            requireRefilterXuatYeuCau();
+        });
+    });
+
+    // Thêm sự kiện tìm kiếm (giống các multi-select khác)
+    searchInput.addEventListener("input", function () {
+        const keyword = searchInput.value.trim().toLowerCase();
+
+        // Lấy tất cả option
+        const options = Array.from(
+            containerElement.querySelectorAll(".multi-select-option")
+        );
+
+        // Nếu không có text → đưa các lựa chọn đã chọn lên đầu
+        if (keyword === "") {
+            // Reset ẩn option
+            options.forEach(opt => opt.classList.remove("filtered-out"));
+
+            // Sort: selected lên trước
+            options.sort((a, b) => {
+                const aChecked = a.querySelector("input").checked;
+                const bChecked = b.querySelector("input").checked;
+
+                return bChecked - aChecked;
+            });
+
+            // Render lại đúng thứ tự
+            options.forEach(opt => containerElement.appendChild(opt));
+
+            return;
+        }
+
+        // Nếu có text → chia làm 2 nhóm:
+        // (1) match keyword
+        // (2) selected nhưng không match keyword
+
+        let matched = [];
+        let selectedNotMatched = [];
+        let others = [];
+
+        options.forEach(opt => {
+            const labelText = opt.textContent.toLowerCase();
+            const checked = opt.querySelector("input").checked;
+
+            if (labelText.includes(keyword)) {
+                matched.push(opt);
+            }
+            else if (checked) {
+                selectedNotMatched.push(opt);
+            }
+            else {
+                others.push(opt);
+            }
+        });
+
+        // Ẩn tất cả trước
+        options.forEach(opt => opt.classList.add("filtered-out"));
+
+        // Hiện nhóm match
+        matched.forEach(opt => {
+            opt.classList.remove("filtered-out");
+            containerElement.appendChild(opt);
+        });
+
+        // Hiện nhóm selected nhưng không match (ngay dưới match)
+        selectedNotMatched.forEach(opt => {
+            opt.classList.remove("filtered-out");
+            containerElement.appendChild(opt);
+        });
+
+        // Nhóm còn lại vẫn ẩn
+    });
+
+    // Giữ container mở rộng khi focus vào ô tìm kiếm
+    searchInput.addEventListener('focus', function () {
+        containerElement.classList.add('expanded');
+    });
+
+    let hideTimeout;
+
+    containerElement.addEventListener("mouseleave", function () {
+        hideTimeout = setTimeout(() => {
+            containerElement.classList.remove("expanded");
+        }, 100);
+    });
+
+    containerElement.addEventListener("mouseenter", function () {
+        clearTimeout(hideTimeout);
+    });
+
+    document.addEventListener("click", function (e) {
+        if (!containerElement.contains(e.target)) {
+            containerElement.classList.remove("expanded");
+        }
+    });
+
+    searchInput.addEventListener('blur', function () {
+        setTimeout(() => {
+            if (!containerElement.matches(':hover')) {
+                containerElement.classList.remove('expanded');
+            }
+        }, 200);
+    });
+
+    updateMaPhieuLabel(); // Cập nhật label lần đầu
+}
+function getSelectedMaPhieu() {
+    const container = document.getElementById('ma-phieu-xuat-yeu-cau-container');
+    if (!container) return [];
+
+    const allCheckbox = document.getElementById('ma-phieu-xuat-yeu-cau-all');
+    if (allCheckbox && allCheckbox.checked) {
+        return []; // Trả về mảng rỗng nếu chọn "Tất cả mã phiếu"
+    }
+
+    const checkboxes = container.querySelectorAll('input[type="checkbox"]:checked:not(#ma-phieu-xuat-yeu-cau-all)');
+    return Array.from(checkboxes).map(cb => cb.value);
+}
+function updateMaPhieuLabel() {
+    const selectedSpan = document.getElementById('ma-phieu-selected-xuat-yeu-cau');
+    if (!selectedSpan) return;
+
+    const allCheckbox = document.getElementById('ma-phieu-xuat-yeu-cau-all');
+    if (allCheckbox && allCheckbox.checked) {
+        selectedSpan.textContent = "Đã chọn: Tất cả";
+        return;
+    }
+
+    const selected = getSelectedMaPhieu();
+    selectedSpan.textContent = `Đã chọn: ${selected.length}`;
+}
+
+function updateLoaiPhieuOptionsForXuatYeuCau() {
+    if (xuatChuyenKhoData.length === 0) return;
+
+    const headers = xuatChuyenKhoData[0];
+    const loaiPhieuIndex = headers.indexOf('loai_phieu');
+    if (loaiPhieuIndex === -1) return;
+
+    // Lấy danh sách xưởng duy nhất
+    const loaiphieuValues = new Set();
+    for (let i = 1; i < xuatChuyenKhoData.length; i++) {
+        const value = xuatChuyenKhoData[i][loaiPhieuIndex];
+        if (value && value.trim() !== '') {
+            loaiphieuValues.add(value.trim());
+        }
+    }
+
+    const sortedValues = Array.from(loaiphieuValues).sort();
+
+    const selectElement = document.getElementById('loai-phieu-xuat-yeu-cau');
+    if (!selectElement) return;
+
+    // Xóa option cũ (giữ option đầu)
+    while (selectElement.options.length > 1) {
+        selectElement.remove(1);
+    }
+
+    // Thêm option mới
+    sortedValues.forEach(value => {
+        const option = document.createElement("option");
+        option.value = value;
+        option.textContent = value;
+        selectElement.appendChild(option);
+    });
+}
+
+function updateXuongSanXuatOptionsForXuatYeuCau() {
+    if (xuatChuyenKhoData.length === 0) return;
+
+    const headers = xuatChuyenKhoData[0];
+    const xuongSxIndex = headers.indexOf('xuong_sx');
+    if (xuongSxIndex === -1) return;
+
+    // Lấy danh sách xưởng duy nhất
+    const xuongValues = new Set();
+    for (let i = 1; i < xuatChuyenKhoData.length; i++) {
+        const value = xuatChuyenKhoData[i][xuongSxIndex];
+        if (value && value.trim() !== '') {
+            xuongValues.add(value.trim());
+        }
+    }
+
+    const sortedValues = Array.from(xuongValues).sort();
+
+    const selectElement = document.getElementById('xuong-san-xuat-xuat-yeu-cau');
+    if (!selectElement) return;
+
+    // Xóa option cũ (giữ option đầu)
+    while (selectElement.options.length > 1) {
+        selectElement.remove(1);
+    }
+
+    // Thêm option mới
+    sortedValues.forEach(value => {
+        const option = document.createElement("option");
+        option.value = value;
+        option.textContent = value;
+        selectElement.appendChild(option);
+    });
+}
 
 // Cập nhật trạng thái kết nối
 function updateConnectionStatus(text, bgColor, color) {
@@ -4445,4 +4782,362 @@ function requireRefilterXuatBaoHanh() {
     document.getElementById('results-count-xbh').textContent = 'Kết quả: Chưa có dòng nào được lọc.';
     filteredResultsXuatBaoHanh = [];
     showMessageXuatBaoHanh("Bạn đã thay đổi bộ lọc. Vui lòng nhấn 'Lọc' để cập nhật kết quả mới.", "error");
+}
+
+// ==================== TAB XUẤT YÊU CẦU (HOÀN THIỆN) ====================
+
+function initXuatYeuCauEventListeners() {
+    document.getElementById('btn-loc-xuat-yeu-cau').addEventListener('click', applyFilterXuatYeuCau);
+    document.getElementById('btn-reset-xuat-yeu-cau').addEventListener('click', resetFilterXuatYeuCau);
+    document.getElementById('btn-export-xuat-yeu-cau').addEventListener('click', exportToExcelXuatYeuCau);
+
+    document.getElementById("tu-ngay-xuat-yeu-cau").addEventListener("change", requireRefilterXuatYeuCau);
+    document.getElementById("den-ngay-xuat-yeu-cau").addEventListener("change", requireRefilterXuatYeuCau);
+    document.getElementById("loai-phieu-xuat-yeu-cau").addEventListener("change", requireRefilterXuatYeuCau);
+    document.getElementById("xuong-san-xuat-xuat-yeu-cau").addEventListener("change", requireRefilterXuatYeuCau);
+}
+
+function resetFilterXuatYeuCau() {
+    // Reset multi-select mã phiếu
+    const maPhieuAllCheckbox = document.getElementById('ma-phieu-xuat-yeu-cau-all');
+    if (maPhieuAllCheckbox) {
+        maPhieuAllCheckbox.checked = true;
+    }
+
+    const maPhieuCheckboxes = document.querySelectorAll('#ma-phieu-xuat-yeu-cau-container input[type="checkbox"]:not(#ma-phieu-xuat-yeu-cau-all)');
+    maPhieuCheckboxes.forEach(checkbox => {
+        checkbox.checked = false;
+    });
+
+    document.getElementById('tu-ngay-xuat-yeu-cau').value = '';
+    document.getElementById('den-ngay-xuat-yeu-cau').value = '';
+    document.getElementById('loai-phieu-xuat-yeu-cau').value = '';
+    document.getElementById('xuong-san-xuat-xuat-yeu-cau').value = '';
+
+    document.getElementById('results-table-xuat-yeu-cau').style.display = 'none';
+    document.getElementById('no-results-xuat-yeu-cau').style.display = 'block';
+    document.getElementById('results-count-xuat-yeu-cau').textContent = 'Kết quả: Chưa có dòng nào được lọc.';
+
+    filteredResultsXuatYeuCau = [];
+}
+
+async function applyFilterXuatYeuCau() {
+    showLoadingXuatYeuCau(true);
+
+    try {
+        if (!isDataLoaded) {
+            await fetchDataFromSheets();
+        }
+
+        const filterOptions = {
+            maPhieu: getSelectedMaPhieu(),
+            tuNgay: document.getElementById('tu-ngay-xuat-yeu-cau').value,
+            denNgay: document.getElementById('den-ngay-xuat-yeu-cau').value,
+            loaiPhieuloc: document.getElementById('loai-phieu-xuat-yeu-cau').value,
+            xuongSanXuat: document.getElementById('xuong-san-xuat-xuat-yeu-cau').value
+        };
+
+        filteredResultsXuatYeuCau = filterDataXuatYeuCau(filterOptions);
+        displayResultsXuatYeuCau(filteredResultsXuatYeuCau);
+        showMessageXuatYeuCau(`Đã tìm thấy ${filteredResultsXuatYeuCau.length} dòng phù hợp.`, 'success');
+
+    } catch (error) {
+        console.error('Lỗi khi áp dụng bộ lọc:', error);
+        showMessageXuatYeuCau('Đã xảy ra lỗi khi tải dữ liệu. Vui lòng thử lại.', 'error');
+    } finally {
+        showLoadingXuatYeuCau(false);
+    }
+}
+
+function filterDataXuatYeuCau(filterOptions) {
+    if (xuatChuyenKhoChiTietData.length === 0) {
+        return [];
+    }
+
+    const chiTietHeaders = xuatChuyenKhoChiTietData[0];
+    const chiTietColumnIndex = {};
+    chiTietHeaders.forEach((header, index) => {
+        chiTietColumnIndex[header] = index;
+    });
+
+    const filteredResults = [];
+    let resultId = 1;
+
+    for (let i = 1; i < xuatChuyenKhoChiTietData.length; i++) {
+        const chiTietRow = xuatChuyenKhoChiTietData[i];
+
+        if (!passesFilterConditionsXuatYeuCau(chiTietRow, chiTietColumnIndex, filterOptions)) {
+            continue;
+        }
+
+        filteredResults.push({
+            id: resultId++,
+            chiTietRow: chiTietRow,
+            chiTietColumnIndex: chiTietColumnIndex
+        });
+    }
+
+    return filteredResults;
+}
+
+function passesFilterConditionsXuatYeuCau(chiTietRow, chiTietColumnIndex, filterOptions) {
+    const maPhieuXuatId = chiTietRow[chiTietColumnIndex['ma_phieu_xuat_id']] || '';
+
+    // Lấy thông tin phiếu từ lookup table
+    const phieuInfo = lookupPhieuByMaPhieu[maPhieuXuatId] || {};
+    const loaiPhieu = phieuInfo.loaiPhieu || '';
+    const xuongSx = phieuInfo.xuongSx || '';
+    const ngayXuat = phieuInfo.ngayXuat || '';
+
+    // Lọc theo mã phiếu (multi-select)
+    if (filterOptions.maPhieu && filterOptions.maPhieu.length > 0) {
+        if (!filterOptions.maPhieu.includes(maPhieuXuatId)) {
+            return false;
+        }
+    }
+
+    // Lọc theo loại phiếu
+    if (filterOptions.loaiPhieuloc && loaiPhieu !== filterOptions.loaiPhieuloc) {
+        return false;
+    }
+
+    // Lọc theo xưởng sản xuất
+    if (filterOptions.xuongSanXuat && xuongSx !== filterOptions.xuongSanXuat) {
+        return false;
+    }
+
+    // Lọc theo ngày xuất
+    if (filterOptions.tuNgay && filterOptions.denNgay) {
+        const tuNgay = new Date(filterOptions.tuNgay);
+        const denNgay = new Date(filterOptions.denNgay);
+
+        tuNgay.setHours(0, 0, 0, 0);
+        denNgay.setHours(23, 59, 59, 999);
+
+        const ngayXuatDate = parseDDMMYYYY(ngayXuat);
+        if (!ngayXuatDate) {
+            return false;
+        }
+
+        if (ngayXuatDate < tuNgay || ngayXuatDate > denNgay) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+function getTaiKhoanHachToan(maVatTu) {
+    if (!maVatTu) return "";
+
+    // giống CONTAINS(ma_vat_tu, "*")
+    if (maVatTu.includes("*")) {
+        return "155";
+    }
+    return "1521";
+}
+
+function displayResultsXuatYeuCau(results) {
+    const resultsBody = document.getElementById('results-body-xuat-yeu-cau');
+    const resultsTable = document.getElementById('results-table-xuat-yeu-cau');
+    const noResults = document.getElementById('no-results-xuat-yeu-cau');
+    const resultsCount = document.getElementById('results-count-xuat-yeu-cau');
+
+    resultsCount.textContent = `Kết quả: ${results.length} dòng`;
+    resultsBody.innerHTML = '';
+
+    if (results.length === 0) {
+        resultsTable.style.display = 'none';
+        noResults.style.display = 'block';
+        return;
+    }
+
+    noResults.style.display = 'none';
+    resultsTable.style.display = 'table';
+
+    results.forEach(result => {
+        const chiTietRow = result.chiTietRow;
+        const chiTietColumnIndex = result.chiTietColumnIndex;
+
+        // Lấy các giá trị cần thiết (điều chỉnh theo cấu trúc thực tế của sheet)
+        const maPhieuXuatId = chiTietRow[chiTietColumnIndex['ma_phieu_xuat_id']] || '';
+        const maVatTu = chiTietRow[chiTietColumnIndex['ma_vat_tu']] || '';
+        const xuatTaikho = chiTietRow[chiTietColumnIndex['xuat_tai_kho']] || '';
+        const nhapTaikho = chiTietRow[chiTietColumnIndex['nhap_tai_kho']] || '';
+        const taiKhoanHachtoan = getTaiKhoanHachToan(maVatTu);
+        const dvtQuydoi = chiTietRow[chiTietColumnIndex['dvt_quy_doi']] || '';
+        const slXuatQuydoi = chiTietRow[chiTietColumnIndex['sl_xuat_quy_doi']] || '';
+
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td></td>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td>Mã phiếu xuất ${maPhieuXuatId}</td>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td>${maVatTu}</td>
+            <td></td>
+            <td>${xuatTaikho}</td>
+            <td></td>
+            <td>${nhapTaikho}</td>
+            <td></td>
+            <td></td>
+            <td>${taiKhoanHachtoan}</td>
+            <td>${taiKhoanHachtoan}</td>
+            <td>${dvtQuydoi}</td>
+            <td>${slXuatQuydoi}</td>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td></td>
+        `;
+        resultsBody.appendChild(row);
+    });
+}
+
+async function exportToExcelXuatYeuCau() {
+    if (filteredResultsXuatYeuCau.length === 0) {
+        showMessageXuatYeuCau('Không có dữ liệu để xuất. Vui lòng thực hiện lọc trước.', 'error');
+        return;
+    }
+
+    try {
+        const workbook = new ExcelJS.Workbook();
+        const worksheet = workbook.addWorksheet('Danh sách yêu cầu xuất kho');
+
+        // Thêm tiêu đề cột
+        const headers = [
+            'Hiển thị trên sổ', 'Hình thức chuyển kho', 'Ngày chứng từ (*)', 'Ngày hạch toán (*)', 'Số chứng từ (*)', 'Mẫu số hóa đơn', 'Ký hiệu HĐ', 'Hợp đồng KT số/Lệnh điều động', 'Ngày',
+            'Của', 'Về việc/Diễn giải', 'Đại lý/Đơn vị nhận', 'Tên đại lý/Tên đơn vị nhận', 'Mã số thuế đại lý/đơn vị nhận', 'Người vận chuyển', 'Tên người VC', 'Hợp đồng số', 'Phương tiện VC',
+            'Mã hàng (*)', 'Tên hàng', 'Xuất tại kho (*)', 'Địa chỉ kho xuất', 'Nhập tại kho (*)', 'Địa chỉ kho nhập', 'Hàng hóa giữ hộ/bán hộ', 'TK Nợ (*)', 'TK Có (*)', 'ĐVT', 'Số lượng', 'Đơn giá bán',
+            'Thành tiền', 'Đơn giá vốn', 'Tiền vốn', 'Số lô', 'Hạn sử dụng', 'Mã thống kê'
+        ];
+
+        worksheet.addRow(headers);
+
+        // Định dạng tiêu đề
+        const headerRow = worksheet.getRow(1);
+        headerRow.font = { bold: true };
+        headerRow.fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: 'FFE0E0E0' }
+        };
+
+        // Điền dữ liệu
+        filteredResultsXuatYeuCau.forEach((result, index) => {
+            const chiTietRow = result.chiTietRow;
+            const chiTietColumnIndex = result.chiTietColumnIndex;
+
+            // Lấy các giá trị cần thiết (điều chỉnh theo cấu trúc thực tế của sheet)
+            const maPhieuXuatId = chiTietRow[chiTietColumnIndex['ma_phieu_xuat_id']] || '';
+            const maVatTu = chiTietRow[chiTietColumnIndex['ma_vat_tu']] || '';
+            const xuatTaikho = chiTietRow[chiTietColumnIndex['xuat_tai_kho']] || '';
+            const nhapTaikho = chiTietRow[chiTietColumnIndex['nhap_tai_kho']] || '';
+            const taiKhoanHachtoan = getTaiKhoanHachToan(maVatTu);
+            const dvtQuydoi = chiTietRow[chiTietColumnIndex['dvt_quy_doi']] || '';
+            const slXuatQuydoi = chiTietRow[chiTietColumnIndex['sl_xuat_quy_doi']] || '';
+
+            const lyDoXuat = `Mã phiếu xuất ${maPhieuXuatId}`;
+
+            const rowData = [, , , , , , , , , , , lyDoXuat, , , , , , , , maVatTu, , xuatTaikho, , nhapTaikho, , , taiKhoanHachtoan, taiKhoanHachtoan, dvtQuydoi, slXuatQuydoi, , , , , , ,];
+
+            worksheet.addRow(rowData);
+        });
+
+        // Tự động điều chỉnh độ rộng cột
+        worksheet.columns.forEach(column => {
+            let maxLength = 0;
+            column.eachCell({ includeEmpty: true }, cell => {
+                const cellLength = cell.value ? cell.value.toString().length : 10;
+                if (cellLength > maxLength) {
+                    maxLength = cellLength;
+                }
+            });
+            column.width = maxLength < 10 ? 10 : maxLength + 2;
+        });
+
+        // Tạo tên file
+        const tuNgayRaw = document.getElementById("tu-ngay-xuat-yeu-cau").value;
+        const denNgayRaw = document.getElementById("den-ngay-xuat-yeu-cau").value;
+        const tuNgay = formatDateForFilename(tuNgayRaw);
+        const denNgay = formatDateForFilename(denNgayRaw);
+        const xuongSanXuat = document.getElementById('xuong-san-xuat-xuat-yeu-cau').value;
+
+        const outputBuffer = await workbook.xlsx.writeBuffer();
+        const blob = new Blob([outputBuffer], {
+            type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        });
+
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        const fileName = `Danh sách xuất yêu cầu - ${tuNgay} - ${denNgay} - ${xuongSanXuat || 'Tất cả'}.xlsx`;
+        link.download = fileName;
+        link.click();
+
+        showMessageXuatYeuCau(`Đã xuất ${filteredResultsXuatYeuCau.length} dòng ra file Excel.`, 'success');
+
+    } catch (error) {
+        console.error('Lỗi xuất Excel:', error);
+        showMessageXuatYeuCau('Không thể xuất Excel. Vui lòng thử lại.', 'error');
+    }
+}
+
+function showLoadingXuatYeuCau(show) {
+    const loadingElement = document.getElementById('loading-xuat-yeu-cau');
+    if (loadingElement) {
+        loadingElement.style.display = show ? 'block' : 'none';
+    }
+}
+
+function showMessageXuatYeuCau(message, type) {
+    const resultsCount = document.getElementById("results-count-xuat-yeu-cau");
+    if (!resultsCount) return;
+
+    resultsCount.className = "results-count";
+
+    if (type === "success") {
+        resultsCount.style.backgroundColor = "#e8f7e8";
+        resultsCount.style.color = "#0c9c07";
+        resultsCount.style.borderLeft = "4px solid #0c9c07";
+    } else if (type === "error") {
+        resultsCount.style.backgroundColor = "#ffeaea";
+        resultsCount.style.color = "#c00";
+        resultsCount.style.borderLeft = "4px solid #c00";
+    }
+
+    resultsCount.style.padding = "5px";
+    resultsCount.style.borderRadius = "6px";
+    resultsCount.style.fontSize = "16px";
+    resultsCount.style.fontWeight = "600";
+    resultsCount.textContent = message;
+}
+
+function requireRefilterXuatYeuCau() {
+    const resultsTable = document.getElementById('results-table-xuat-yeu-cau');
+    const noResults = document.getElementById('no-results-xuat-yeu-cau');
+    const resultsCount = document.getElementById('results-count-xuat-yeu-cau');
+
+    if (resultsTable) resultsTable.style.display = 'none';
+    if (noResults) noResults.style.display = 'block';
+    if (resultsCount) resultsCount.textContent = 'Kết quả: Chưa có dòng nào được lọc.';
+
+    filteredResultsXuatYeuCau = [];
+    showMessageXuatYeuCau("Bạn đã thay đổi bộ lọc. Vui lòng nhấn 'Lọc' để cập nhật kết quả mới.", "error");
 }

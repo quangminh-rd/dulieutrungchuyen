@@ -192,8 +192,8 @@ body {
 
 .filter-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 10px;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 15px;
 }
 
 .filter-group {
@@ -206,6 +206,13 @@ body {
     font-weight: 600;
     color: #444;
     font-size: 15px;
+}
+
+.filter-label span {
+    font-weight: 600;
+    color: #0c9c07;
+    margin-left: 8px;
+    font-size: 14px;
 }
 
 .filter-input,
