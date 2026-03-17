@@ -1226,7 +1226,7 @@ function convertDateToExcelSerial(dateStr) {
     const mm = parseInt(parts[1], 10);
     const yyyy = parseInt(parts[2], 10);
 
-    if (!dd || !mm || !yyyy) return dateStr;
+    if (!dd || !mm || !yyyy) return null;
 
     // Tạo Date theo UTC để tránh lệch ngày do timezone
     const dateObj = new Date(Date.UTC(yyyy, mm - 1, dd));
@@ -4813,6 +4813,7 @@ function resetFilterXuatYeuCau() {
     document.getElementById('den-ngay-xuat-yeu-cau').value = '';
     document.getElementById('loai-phieu-xuat-yeu-cau').value = '';
     document.getElementById('xuong-san-xuat-xuat-yeu-cau').value = '';
+    document.getElementById('so-chung-tu-mau').value = '';
 
     document.getElementById('results-table-xuat-yeu-cau').style.display = 'none';
     document.getElementById('no-results-xuat-yeu-cau').style.display = 'block';
@@ -4829,6 +4830,25 @@ async function applyFilterXuatYeuCau() {
             await fetchDataFromSheets();
         }
 
+        // Đọc giá trị số chứng từ mẫu
+        const soChungTuMau = document.getElementById('so-chung-tu-mau').value.trim();
+        let prefix = '';
+        let startNumber = 0;
+        let padLength = 4; // mặc định độ dài phần số là 4
+
+        if (soChungTuMau) {
+            const match = soChungTuMau.match(/^(.*?)\.(\d+)$/);
+            if (!match) {
+                showMessageXuatYeuCau('Số chứng từ không đúng định dạng. Ví dụ: 26-PCK.0001', 'error');
+                showLoadingXuatYeuCau(false);
+                return;
+            }
+            prefix = match[1];
+            const numberPart = match[2];
+            startNumber = parseInt(numberPart, 10);
+            padLength = numberPart.length; // giữ nguyên độ dài số (ví dụ 0001 → 4)
+        }
+
         const filterOptions = {
             maPhieu: getSelectedMaPhieu(),
             tuNgay: document.getElementById('tu-ngay-xuat-yeu-cau').value,
@@ -4837,7 +4857,45 @@ async function applyFilterXuatYeuCau() {
             xuongSanXuat: document.getElementById('xuong-san-xuat-xuat-yeu-cau').value
         };
 
-        filteredResultsXuatYeuCau = filterDataXuatYeuCau(filterOptions);
+        let results = filterDataXuatYeuCau(filterOptions);
+
+        // Nếu có số chứng từ mẫu, sắp xếp và sinh số
+        if (soChungTuMau && results.length > 0) {
+            // Sắp xếp theo ngay_xuat (tăng dần), nếu cùng ngày thì theo ma_phieu_xuat_id
+            results.sort((a, b) => {
+                const aInfo = lookupPhieuByMaPhieu[a.chiTietRow[a.chiTietColumnIndex['ma_phieu_xuat_id']] || ''] || {};
+                const bInfo = lookupPhieuByMaPhieu[b.chiTietRow[b.chiTietColumnIndex['ma_phieu_xuat_id']] || ''] || {};
+                const aDate = parseDDMMYYYY(aInfo.ngayXuat) || new Date(0);
+                const bDate = parseDDMMYYYY(bInfo.ngayXuat) || new Date(0);
+                if (aDate.getTime() !== bDate.getTime()) return aDate - bDate;
+                // So sánh mã phiếu (chuỗi)
+                const aId = a.chiTietRow[a.chiTietColumnIndex['ma_phieu_xuat_id']] || '';
+                const bId = b.chiTietRow[b.chiTietColumnIndex['ma_phieu_xuat_id']] || '';
+                return aId.localeCompare(bId);
+            });
+
+            // Tạo map lưu số chứng từ cho mỗi ma_phieu_xuat_id
+            const phieuSoMap = new Map();
+            let currentNumber = startNumber;
+            for (const item of results) {
+                const maPhieu = item.chiTietRow[item.chiTietColumnIndex['ma_phieu_xuat_id']] || '';
+                if (!phieuSoMap.has(maPhieu)) {
+                    const so = currentNumber++;
+                    phieuSoMap.set(maPhieu, prefix + '.' + so.toString().padStart(padLength, '0'));
+                }
+            }
+
+            // Gán số chứng từ cho từng dòng dựa trên map
+            results.forEach(item => {
+                const maPhieu = item.chiTietRow[item.chiTietColumnIndex['ma_phieu_xuat_id']] || '';
+                item.soChungTu = phieuSoMap.get(maPhieu) || '';
+            });
+        } else {
+            // Nếu không nhập mẫu, xóa trường soChungTu (để trống)
+            results.forEach(item => { item.soChungTu = ''; });
+        }
+
+        filteredResultsXuatYeuCau = results;
         displayResultsXuatYeuCau(filteredResultsXuatYeuCau);
         showMessageXuatYeuCau(`Đã tìm thấy ${filteredResultsXuatYeuCau.length} dòng phù hợp.`, 'success');
 
@@ -4959,54 +5017,36 @@ function displayResultsXuatYeuCau(results) {
         const chiTietRow = result.chiTietRow;
         const chiTietColumnIndex = result.chiTietColumnIndex;
 
-        // Lấy các giá trị cần thiết (điều chỉnh theo cấu trúc thực tế của sheet)
         const maPhieuXuatId = chiTietRow[chiTietColumnIndex['ma_phieu_xuat_id']] || '';
         const maVatTu = chiTietRow[chiTietColumnIndex['ma_vat_tu']] || '';
         const xuatTaikho = chiTietRow[chiTietColumnIndex['xuat_tai_kho']] || '';
         const nhapTaikho = chiTietRow[chiTietColumnIndex['nhap_tai_kho']] || '';
-        const taiKhoanHachtoan = getTaiKhoanHachToan(maVatTu);
         const dvtQuydoi = chiTietRow[chiTietColumnIndex['dvt_quy_doi']] || '';
         const slXuatQuydoi = chiTietRow[chiTietColumnIndex['sl_xuat_quy_doi']] || '';
 
+        const phieuInfo = lookupPhieuByMaPhieu[maPhieuXuatId] || {};
+        const ngayXuat = phieuInfo.ngayXuat || '';
+
+        const taiKhoanHachtoan = getTaiKhoanHachToan(maVatTu);
+
+        // Mảng 36 cột, tất cả rỗng
+        const cells = new Array(36).fill('');
+
+        // Gán giá trị theo đúng thứ tự cột
+        cells[2] = ngayXuat;                      // Ngày chứng từ (*)
+        cells[3] = ngayXuat;                      // Ngày hạch toán (*)
+        cells[4] = result.soChungTu || '';        // Số chứng từ (*)
+        cells[10] = `Mã phiếu xuất ${maPhieuXuatId}`; // Về việc/Diễn giải
+        cells[18] = maVatTu;                        // Mã hàng (*)
+        cells[20] = xuatTaikho;                      // Xuất tại kho (*)
+        cells[22] = nhapTaikho;                      // Nhập tại kho (*)
+        cells[25] = taiKhoanHachtoan;                // TK Nợ (*)
+        cells[26] = taiKhoanHachtoan;                // TK Có (*)
+        cells[27] = dvtQuydoi;                       // ĐVT
+        cells[28] = slXuatQuydoi;                     // Số lượng
+
         const row = document.createElement('tr');
-        row.innerHTML = `
-            <td></td>
-            <td></td>
-            <td></td>
-            <td></td>
-            <td></td>
-            <td></td>
-            <td></td>
-            <td></td>
-            <td></td>
-            <td></td>
-            <td>Mã phiếu xuất ${maPhieuXuatId}</td>
-            <td></td>
-            <td></td>
-            <td></td>
-            <td></td>
-            <td></td>
-            <td></td>
-            <td></td>
-            <td>${maVatTu}</td>
-            <td></td>
-            <td>${xuatTaikho}</td>
-            <td></td>
-            <td>${nhapTaikho}</td>
-            <td></td>
-            <td></td>
-            <td>${taiKhoanHachtoan}</td>
-            <td>${taiKhoanHachtoan}</td>
-            <td>${dvtQuydoi}</td>
-            <td>${slXuatQuydoi}</td>
-            <td></td>
-            <td></td>
-            <td></td>
-            <td></td>
-            <td></td>
-            <td></td>
-            <td></td>
-        `;
+        row.innerHTML = cells.map(cell => `<td>${cell}</td>`).join('');
         resultsBody.appendChild(row);
     });
 }
@@ -5021,17 +5061,46 @@ async function exportToExcelXuatYeuCau() {
         const workbook = new ExcelJS.Workbook();
         const worksheet = workbook.addWorksheet('Danh sách yêu cầu xuất kho');
 
-        // Thêm tiêu đề cột
         const headers = [
-            'Hiển thị trên sổ', 'Hình thức chuyển kho', 'Ngày chứng từ (*)', 'Ngày hạch toán (*)', 'Số chứng từ (*)', 'Mẫu số hóa đơn', 'Ký hiệu HĐ', 'Hợp đồng KT số/Lệnh điều động', 'Ngày',
-            'Của', 'Về việc/Diễn giải', 'Đại lý/Đơn vị nhận', 'Tên đại lý/Tên đơn vị nhận', 'Mã số thuế đại lý/đơn vị nhận', 'Người vận chuyển', 'Tên người VC', 'Hợp đồng số', 'Phương tiện VC',
-            'Mã hàng (*)', 'Tên hàng', 'Xuất tại kho (*)', 'Địa chỉ kho xuất', 'Nhập tại kho (*)', 'Địa chỉ kho nhập', 'Hàng hóa giữ hộ/bán hộ', 'TK Nợ (*)', 'TK Có (*)', 'ĐVT', 'Số lượng', 'Đơn giá bán',
-            'Thành tiền', 'Đơn giá vốn', 'Tiền vốn', 'Số lô', 'Hạn sử dụng', 'Mã thống kê'
+            'Hiển thị trên sổ',
+            'Hình thức chuyển kho',
+            'Ngày chứng từ (*)',
+            'Ngày hạch toán (*)',
+            'Số chứng từ (*)',
+            'Mẫu số hóa đơn',
+            'Ký hiệu HĐ',
+            'Hợp đồng KT số/Lệnh điều động',
+            'Ngày',
+            'Của',
+            'Về việc/Diễn giải',
+            'Đại lý/Đơn vị nhận',
+            'Tên đại lý/Tên đơn vị nhận',
+            'Mã số thuế đại lý/đơn vị nhận',
+            'Người vận chuyển',
+            'Tên người VC',
+            'Hợp đồng số',
+            'Phương tiện VC',
+            'Mã hàng (*)',
+            'Tên hàng',
+            'Xuất tại kho (*)',
+            'Địa chỉ kho xuất',
+            'Nhập tại kho (*)',
+            'Địa chỉ kho nhập',
+            'Hàng hóa giữ hộ/bán hộ',
+            'TK Nợ (*)',
+            'TK Có (*)',
+            'ĐVT',
+            'Số lượng',
+            'Đơn giá bán',
+            'Thành tiền',
+            'Đơn giá vốn',
+            'Tiền vốn',
+            'Số lô',
+            'Hạn sử dụng',
+            'Mã thống kê'
         ];
-
         worksheet.addRow(headers);
 
-        // Định dạng tiêu đề
         const headerRow = worksheet.getRow(1);
         headerRow.font = { bold: true };
         headerRow.fill = {
@@ -5040,25 +5109,44 @@ async function exportToExcelXuatYeuCau() {
             fgColor: { argb: 'FFE0E0E0' }
         };
 
-        // Điền dữ liệu
-        filteredResultsXuatYeuCau.forEach((result, index) => {
+        filteredResultsXuatYeuCau.forEach(result => {
             const chiTietRow = result.chiTietRow;
             const chiTietColumnIndex = result.chiTietColumnIndex;
 
-            // Lấy các giá trị cần thiết (điều chỉnh theo cấu trúc thực tế của sheet)
             const maPhieuXuatId = chiTietRow[chiTietColumnIndex['ma_phieu_xuat_id']] || '';
             const maVatTu = chiTietRow[chiTietColumnIndex['ma_vat_tu']] || '';
             const xuatTaikho = chiTietRow[chiTietColumnIndex['xuat_tai_kho']] || '';
             const nhapTaikho = chiTietRow[chiTietColumnIndex['nhap_tai_kho']] || '';
-            const taiKhoanHachtoan = getTaiKhoanHachToan(maVatTu);
             const dvtQuydoi = chiTietRow[chiTietColumnIndex['dvt_quy_doi']] || '';
             const slXuatQuydoi = chiTietRow[chiTietColumnIndex['sl_xuat_quy_doi']] || '';
 
-            const lyDoXuat = `Mã phiếu xuất ${maPhieuXuatId}`;
+            const phieuInfo = lookupPhieuByMaPhieu[maPhieuXuatId] || {};
+            const ngayXuat = phieuInfo.ngayXuat || '';
+            const ngayXuatSerial = convertDateToExcelSerial(ngayXuat);
 
-            const rowData = [, , , , , , , , , , , lyDoXuat, , , , , , , , maVatTu, , xuatTaikho, , nhapTaikho, , , taiKhoanHachtoan, taiKhoanHachtoan, dvtQuydoi, slXuatQuydoi, , , , , , ,];
+            const taiKhoanHachtoan = getTaiKhoanHachToan(maVatTu);
+
+            const rowData = new Array(36).fill('');
+            rowData[2] = ngayXuatSerial;
+            rowData[3] = ngayXuatSerial;
+            rowData[4] = result.soChungTu || '';   // Số chứng từ (*)
+            rowData[10] = `Mã phiếu xuất ${maPhieuXuatId}`;
+            rowData[18] = maVatTu;
+            rowData[20] = xuatTaikho;
+            rowData[22] = nhapTaikho;
+            rowData[25] = taiKhoanHachtoan;
+            rowData[26] = taiKhoanHachtoan;
+            rowData[27] = dvtQuydoi;
+            rowData[28] = slXuatQuydoi;
 
             worksheet.addRow(rowData);
+        });
+
+        // Định dạng cột ngày tháng (cột C và D) là kiểu ngày
+        const dateColumns = [2, 3]; // chỉ số cột bắt đầu từ 0
+        dateColumns.forEach(colIndex => {
+            const column = worksheet.getColumn(colIndex + 1); // worksheet column bắt đầu từ 1
+            column.numFmt = 'dd/mm/yyyy';
         });
 
         // Tự động điều chỉnh độ rộng cột
