@@ -4795,6 +4795,7 @@ function initXuatYeuCauEventListeners() {
     document.getElementById("den-ngay-xuat-yeu-cau").addEventListener("change", requireRefilterXuatYeuCau);
     document.getElementById("loai-phieu-xuat-yeu-cau").addEventListener("change", requireRefilterXuatYeuCau);
     document.getElementById("xuong-san-xuat-xuat-yeu-cau").addEventListener("change", requireRefilterXuatYeuCau);
+    document.getElementById("so-chung-tu-mau").addEventListener("input", requireRefilterXuatYeuCau);
 }
 
 function resetFilterXuatYeuCau() {
