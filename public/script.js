@@ -2565,7 +2565,16 @@ function displayResultsXuat(results) {
         const tenNguoiLienHe = donHangRow[donHangColumnIndex['ten_nguoi_lien_he']] || '';
         const diaChi = donHangRow[donHangColumnIndex['dia_chi']] || '';
         const diaChiChiTiet = donHangRow[donHangColumnIndex['dia_chi_chi_tiet']] || '';
-        const mucChietKhauNPP = formatNumberForDisplay(donHangRow[donHangColumnIndex['muc_chiet_khau_npp']] || '');
+
+        const mucChietKhauNPP = [
+            "Cửa lưới chống muỗi",
+            "Rèm, vách ngăn",
+            "Cửa 2 trong 1",
+            "Mái hiên",
+            "Cửa cuốn Zip"
+        ].includes(nhomSanPham)
+            ? formatNumberForCSV(donHangRow[donHangColumnIndex['muc_chiet_khau_npp']]) : 0;
+
         const phiVanChuyenLapDatNPP = formatNumberForDisplay(donHangRow[donHangColumnIndex['phi_van_chuyen_lap_dat_npp']] || '');
         const soTienTTL1 = formatNumberForDisplay(donHangRow[donHangColumnIndex['so_tien_tt_l1']] || '');
         const soTienPhaiThanhToanNPP = formatNumberForDisplay(donHangRow[donHangColumnIndex['so_tien_phai_thanh_toan_npp']] || '');
@@ -2764,7 +2773,16 @@ async function exportToExcelXuat() {
             const tenNguoiLienHe = donHangRow[donHangColumnIndex['ten_nguoi_lien_he']] || '';
             const diaChi = donHangRow[donHangColumnIndex['dia_chi']] || '';
             const diaChiChiTiet = donHangRow[donHangColumnIndex['dia_chi_chi_tiet']] || '';
-            const mucChietKhauNPP = formatNumberForCSV(donHangRow[donHangColumnIndex['muc_chiet_khau_npp']] || '');
+
+            const mucChietKhauNPP = [
+                "Cửa lưới chống muỗi",
+                "Rèm, vách ngăn",
+                "Cửa 2 trong 1",
+                "Mái hiên",
+                "Cửa cuốn Zip"
+            ].includes(nhomSanPham)
+                ? formatNumberForCSV(donHangRow[donHangColumnIndex['muc_chiet_khau_npp']]) : 0;
+
             const phiVanChuyenLapDatNPP = formatNumberForCSV(donHangRow[donHangColumnIndex['phi_van_chuyen_lap_dat_npp']] || '');
             const soTienTTL1 = formatNumberForCSV(donHangRow[donHangColumnIndex['so_tien_tt_l1']] || '');
             const soTienPhaiThanhToanNPP = formatNumberForCSV(donHangRow[donHangColumnIndex['so_tien_phai_thanh_toan_npp']] || '');
