@@ -2566,14 +2566,23 @@ function displayResultsXuat(results) {
         const diaChi = donHangRow[donHangColumnIndex['dia_chi']] || '';
         const diaChiChiTiet = donHangRow[donHangColumnIndex['dia_chi_chi_tiet']] || '';
 
+        const normalizeText = (s) =>
+            (s || "")
+                .trim()
+                .normalize("NFC")
+                .replace(/\s+/g, " ");
+
+        const nhomSanPhamNormalized = normalizeText(nhomSanPham);
+
         const mucChietKhauNPP = [
             "Cửa lưới chống muỗi",
             "Rèm, vách ngăn",
             "Cửa 2 trong 1",
-            "Mái hiên",
+            "Mái hiên, mái che",
             "Cửa cuốn Zip"
-        ].includes(nhomSanPham)
-            ? formatNumberForCSV(donHangRow[donHangColumnIndex['muc_chiet_khau_npp']]) : 0;
+        ].some(item => normalizeText(item) === nhomSanPhamNormalized)
+            ? formatNumberForCSV(donHangRow[donHangColumnIndex['muc_chiet_khau_npp']])
+            : 0;
 
         const phiVanChuyenLapDatNPP = formatNumberForDisplay(donHangRow[donHangColumnIndex['phi_van_chuyen_lap_dat_npp']] || '');
         const soTienTTL1 = formatNumberForDisplay(donHangRow[donHangColumnIndex['so_tien_tt_l1']] || '');
@@ -2774,14 +2783,23 @@ async function exportToExcelXuat() {
             const diaChi = donHangRow[donHangColumnIndex['dia_chi']] || '';
             const diaChiChiTiet = donHangRow[donHangColumnIndex['dia_chi_chi_tiet']] || '';
 
+            const normalizeText = (s) =>
+                (s || "")
+                    .trim()
+                    .normalize("NFC")
+                    .replace(/\s+/g, " ");
+
+            const nhomSanPhamNormalized = normalizeText(nhomSanPham);
+
             const mucChietKhauNPP = [
                 "Cửa lưới chống muỗi",
                 "Rèm, vách ngăn",
                 "Cửa 2 trong 1",
-                "Mái hiên",
+                "Mái hiên, mái che",
                 "Cửa cuốn Zip"
-            ].includes(nhomSanPham)
-                ? formatNumberForCSV(donHangRow[donHangColumnIndex['muc_chiet_khau_npp']]) : 0;
+            ].some(item => normalizeText(item) === nhomSanPhamNormalized)
+                ? formatNumberForCSV(donHangRow[donHangColumnIndex['muc_chiet_khau_npp']])
+                : 0;
 
             const phiVanChuyenLapDatNPP = formatNumberForCSV(donHangRow[donHangColumnIndex['phi_van_chuyen_lap_dat_npp']] || '');
             const soTienTTL1 = formatNumberForCSV(donHangRow[donHangColumnIndex['so_tien_tt_l1']] || '');
