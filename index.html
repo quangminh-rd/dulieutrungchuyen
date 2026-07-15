@@ -58,6 +58,9 @@
             <button class="tab-button" data-tab="xuat-yeu-cau">
                 <i class="fas fa-boxes"></i> Yêu cầu xuất kho
             </button>
+            <button class="tab-button" data-tab="san-xuat-phu-kien-nhua">
+                <i class="fas fa-network-wired"></i> Sản xuất phụ kiện nhựa
+            </button>
         </div>
 
         <!-- Tab Dữ liệu khách hàng -->
@@ -1262,6 +1265,99 @@
                             <tbody id="results-body-xuat-yeu-cau">
                             </tbody>
                         </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab Sản xuất phụ kiện nhựa -->
+        <div id="san-xuat-phu-kien-nhua-tab" class="tab-content">
+            <div class="filter-section">
+                <div class="filter-title">
+                    <i class="fas fa-sliders-h"></i> Thiết lập bộ lọc - Sản xuất phụ kiện nhựa
+                </div>
+                <div class="filter-grid">
+                    <!-- Mã lệnh (multi-select) -->
+                    <div class="filter-group">
+                        <label class="filter-label" id="ma-lenh-label-sxpk">
+                            Mã lệnh -
+                            <span class="selected-count" id="ma-lenh-selected-sxpk">
+                                Đã chọn: Tất cả
+                            </span>
+                        </label>
+                        <div class="multi-select-container" id="ma-lenh-sxpk-container">
+                            <!-- Các checkbox sẽ được thêm bằng JavaScript -->
+                        </div>
+                    </div>
+
+                    <div class="filter-group">
+                        <label class="filter-label">Từ ngày</label>
+                        <input type="date" class="filter-input" id="tu-ngay-sxpk">
+                    </div>
+                    <div class="filter-group">
+                        <label class="filter-label">Đến ngày</label>
+                        <input type="date" class="filter-input" id="den-ngay-sxpk">
+                    </div>
+                </div>
+                <div class="action-buttons">
+                    <button class="btn btn-primary" id="btn-loc-sxpk">
+                        <i class="fas fa-filter"></i> Lọc
+                    </button>
+                    <button class="btn btn-secondary" id="btn-reset-sxpk">
+                        <i class="fas fa-redo"></i> Đặt lại
+                    </button>
+                </div>
+            </div>
+            <!-- Phần results-section -->
+            <div class="results-section">
+                <div class="results-header">
+                    <div class="results-count" id="results-count-sxpk"></div>
+                    <button class="export-btn" id="btn-export-sxpk">
+                        <i class="fas fa-file-export"></i> Xuất Excel
+                    </button>
+                </div>
+
+                <div class="table-container-wrapper">
+                    <div id="loading-sxpk" class="loading" style="display: none;">
+                        <div class="loading-spinner"></div>
+                        <p>Đang tải dữ liệu từ Google Sheets...</p>
+                    </div>
+
+                    <div id="results-container-sxpk">
+                        <div class="no-results" id="no-results-sxpk">
+                            <i class="fas fa-search"></i>
+                            <p>Chưa có dữ liệu. Vui lòng thiết lập bộ lọc và nhấn "Lọc".</p>
+                        </div>
+
+                        <div class="table-container">
+                            <table class="results-table" id="results-table-sxpk" style="display: none;">
+                                <thead>
+                                    <tr>
+                                        <th>Số lệnh (*)</th>
+                                        <th>Ngày</th>
+                                        <th>Tình trạng</th>
+                                        <th>Diễn giải</th>
+                                        <th>Mã thành phẩm (*)</th>
+                                        <th>Tên thành phẩm</th>
+                                        <th>Số lượng</th>
+                                        <th>ĐVT (Cho thành phẩm)</th>
+                                        <th>Đơn đặt hàng</th>
+                                        <th>Hợp đồng bán</th>
+                                        <th>Đối tượng THCP (Cho thành phẩm)</th>
+                                        <th>Mã thống kê (Cho thành phẩm)</th>
+                                        <th>Mã nguyên vật liệu (*)</th>
+                                        <th>Tên nguyên vật liệu</th>
+                                        <th>ĐVT (Cho định mức)</th>
+                                        <th>Số lượng NVL/1 đơn vị SP</th>
+                                        <th>Số lượng NVL</th>
+                                        <th>Khoản mục CP</th>
+                                        <th>Đối tượng THCP (Cho định mức)</th>
+                                        <th>Mã thống kê (Cho định mức)</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="results-body-sxpk"></tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </div>

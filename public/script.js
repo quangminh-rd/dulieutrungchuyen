@@ -4,6 +4,7 @@ const SPREADSHEET_ID_DANH_SACH_NGUOI_DUNG = '1GSakZ33O0JLrD2Mewl-EAHPBviokl8cLtI
 const SPREADSHEET_ID_DANH_SACH_KHACH_HANG = '1sG87qCUvIZtuJbAv1vS2VRDmHG0ADwFBZQcNR-AzV9Q';
 const SPREADSHEET_ID_GIAO_HANG = '1upjqkhTozefUFiugBeHh0sX9MgNhOtt-QJIh7By2rmY';
 const SPREADSHEET_ID_XUAT_CHUYEN_KHO = '1kb0cieDcUElLmMaEcsNPptIXJs0ZNAu_aaCcmU0aDAU';
+const SPREADSHEET_ID_SAN_XUAT_PHU_KIEN_NHUA = '1tUfZE9Ok2FQjhHY9sSbpl5VyuireOlv7iE9YTOvROj8';
 const API_KEY = 'AIzaSyA9g2qFUolpsu3_HVHOebdZb0NXnQgXlFM';
 
 // Phạm vi dữ liệu
@@ -14,6 +15,11 @@ const RANGE_DANH_SACH_KHACH_HANG = 'danh_sach_khach_hang!A:AC';
 const RANGE_GIAO_HANG = 'giao_hang!A:AF';
 const RANGE_XUAT_CHUYEN_KHO = 'xuat_chuyen_kho!A:S';
 const RANGE_XUAT_CHUYEN_KHO_CHI_TIET = 'xuat_chuyen_kho_chi_tiet!A:Q';
+const RANGE_LENH_SAN_XUAT = 'lenh_san_xuat!A1:ZZ'; // lấy hết
+const RANGE_LENH_SAN_XUAT_CHI_TIET = 'lenh_san_xuat_chi_tiet!A1:ZZ';
+const RANGE_DANH_SACH_KHUON = 'danh_sach_khuon!A1:ZZ';
+const RANGE_DANH_SACH_HAT_NHUA = 'danh_sach_hat_nhua!A1:ZZ';
+const RANGE_DSVT = 'dsvt!A1:ZZ';
 
 // Biến lưu trữ dữ liệu (chung cho cả ba tab)
 let donHangData = [];
@@ -24,6 +30,12 @@ let giaoHangData = [];
 let xuatChuyenKhoData = [];
 let xuatChuyenKhoChiTietData = [];
 let filteredResultsXuatYeuCau = [];
+let lenhSanXuatData = [];
+let lenhSanXuatChiTietData = [];
+let danhSachKhuonData = [];
+let danhSachHatNhuaData = [];
+let dsvtData = [];
+let filteredResultsSxpk = [];
 
 // Lookup tables (chung)
 let lookupNguoiDungByMaNV = {};
@@ -31,6 +43,9 @@ let lookupNguoiDungByTenNV = {};
 let lookupKhachHangById = {};
 let lookupGiaoHangByMaBoHang = {};
 let lookupPhieuByMaPhieu = {}; // Map từ mã phiếu sang thông tin phiếu
+let lookupKhuon = {};          // ma_khuon_chi_tiet -> dien_giai
+let lookupHatNhua = {};        // ma_hat_nhua -> ten_hat_nhua
+let lookupDsvt = {};           // ma_vat_tu_the_hien -> { ten_vat_tu_the_hien, dvt }
 
 // Biến kiểm tra đã tải dữ liệu chưa
 let isDataLoaded = false;
@@ -102,6 +117,7 @@ async function initialLoadData() {
         initLenSanXuatEventListeners();
         initXuatBaoHanhEventListeners();
         initXuatYeuCauEventListeners();
+        initSanXuatPhuKienNhuaEventListeners();
 
     } catch (error) {
         console.error('Lỗi khi tải dữ liệu ban đầu:', error);
@@ -142,6 +158,27 @@ async function fetchDataFromSheets() {
             gapi.client.sheets.spreadsheets.values.get({
                 spreadsheetId: SPREADSHEET_ID_XUAT_CHUYEN_KHO,
                 range: RANGE_XUAT_CHUYEN_KHO_CHI_TIET,
+            }),
+            gapi.client.sheets.spreadsheets.values.get({
+                spreadsheetId: SPREADSHEET_ID_SAN_XUAT_PHU_KIEN_NHUA,
+                range: RANGE_LENH_SAN_XUAT,
+            }),
+            gapi.client.sheets.spreadsheets.values.get({
+                spreadsheetId: SPREADSHEET_ID_SAN_XUAT_PHU_KIEN_NHUA,
+                range: RANGE_LENH_SAN_XUAT_CHI_TIET,
+            }),
+            gapi.client.sheets.spreadsheets.values.get({
+                spreadsheetId: SPREADSHEET_ID_SAN_XUAT_PHU_KIEN_NHUA,
+                range: RANGE_DANH_SACH_KHUON,
+            }),
+            gapi.client.sheets.spreadsheets.values.get({
+                spreadsheetId: SPREADSHEET_ID_SAN_XUAT_PHU_KIEN_NHUA,
+                range: RANGE_DANH_SACH_HAT_NHUA,
+            }),
+            // Thêm dsvt từ file xuất chuyển kho
+            gapi.client.sheets.spreadsheets.values.get({
+                spreadsheetId: SPREADSHEET_ID_XUAT_CHUYEN_KHO,
+                range: RANGE_DSVT,
             })
         ];
 
@@ -155,6 +192,13 @@ async function fetchDataFromSheets() {
         giaoHangData = results[4].result.values || [];
         xuatChuyenKhoData = results[5].result.values || [];
         xuatChuyenKhoChiTietData = results[6].result.values || [];
+
+        // Dữ liệu mới (vị trí 7,8,9,10,11)
+        lenhSanXuatData = results[7]?.result?.values || [];
+        lenhSanXuatChiTietData = results[8]?.result?.values || [];
+        danhSachKhuonData = results[9]?.result?.values || [];
+        danhSachHatNhuaData = results[10]?.result?.values || [];
+        dsvtData = results[11]?.result?.values || [];
 
         // Xây dựng lookup tables
         buildLookupTables();
@@ -179,6 +223,7 @@ async function fetchDataFromSheets() {
         // Cập nhật options cho tab xuất yêu cầu
         updateMaPhieuOptions();
         updateXuongSanXuatOptionsForXuatYeuCau();
+        updateMaLenhOptions();
         updateLoaiPhieuOptionsForXuatYeuCau();
 
         updateConnectionStatus('Đã tải dữ liệu', '#e8f7e8', '#0c9c07');
@@ -270,6 +315,57 @@ function buildLookupTables() {
 
             if (maPhieuXuat) {
                 lookupPhieuByMaPhieu[maPhieuXuat] = { loaiPhieu, xuongSx, ngayXuat };
+            }
+        }
+    }
+
+    // Xây dựng lookup từ danh_sach_khuon
+    if (danhSachKhuonData.length > 0) {
+        const headers = danhSachKhuonData[0];
+        const maKhuonIndex = headers.indexOf('ma_khuon_chi_tiet');
+        const dienGiaiIndex = headers.indexOf('dien_giai');
+        for (let i = 1; i < danhSachKhuonData.length; i++) {
+            const row = danhSachKhuonData[i];
+            const maKhuon = maKhuonIndex >= 0 ? row[maKhuonIndex] : '';
+            const dienGiai = dienGiaiIndex >= 0 ? row[dienGiaiIndex] : '';
+            if (maKhuon) lookupKhuon[maKhuon] = dienGiai;
+        }
+    }
+
+    // Xây dựng lookup từ danh_sach_hat_nhua
+    if (danhSachHatNhuaData.length > 0) {
+        const headers = danhSachHatNhuaData[0];
+        const maHatIndex = headers.indexOf('ma_hat_nhua');
+        const tenHatIndex = headers.indexOf('ten_hat_nhua');
+        for (let i = 1; i < danhSachHatNhuaData.length; i++) {
+            const row = danhSachHatNhuaData[i];
+            const maHat = maHatIndex >= 0 ? row[maHatIndex] : '';
+            const tenHat = tenHatIndex >= 0 ? row[tenHatIndex] : '';
+            if (maHat) lookupHatNhua[maHat] = tenHat;
+        }
+    }
+
+    // Xây dựng lookup từ dsvt
+    if (dsvtData && dsvtData.length > 0) {
+        const headers = dsvtData[0];
+        const maVTIndex = headers.indexOf('ma_vat_tu_the_hien');
+        const tenVTIndex = headers.indexOf('ten_vat_tu_the_hien');
+        const dvtIndex = headers.indexOf('dvt');
+
+        if (maVTIndex === -1 || tenVTIndex === -1 || dvtIndex === -1) {
+            console.warn('⚠️ Không tìm thấy cột cần thiết trong dsvt:', { maVTIndex, tenVTIndex, dvtIndex });
+        } else {
+            for (let i = 1; i < dsvtData.length; i++) {
+                const row = dsvtData[i];
+                let maVT = row[maVTIndex] || '';
+                // Làm sạch key: loại bỏ ký tự * và khoảng trắng thừa
+                maVT = maVT.replace(/\*/g, '').trim();
+                if (maVT) {
+                    lookupDsvt[maVT] = {
+                        ten_vat_tu_the_hien: row[tenVTIndex] || '',
+                        dvt: row[dvtIndex] || ''
+                    };
+                }
             }
         }
     }
@@ -1157,6 +1253,214 @@ function updateXuongSanXuatOptionsForXuatYeuCau() {
         option.textContent = value;
         selectElement.appendChild(option);
     });
+}
+
+// Cập nhật options cho select mã lệnh (dạng multi-select)
+function updateMaLenhOptions() {
+    if (lenhSanXuatData.length === 0) return;
+
+    const lsxHeaders = lenhSanXuatData[0];
+    const maLenhIdx = lsxHeaders.indexOf('ma_lenh_san_xuat');
+    if (maLenhIdx === -1) return;
+
+    // Lấy danh sách mã lệnh duy nhất (loại bỏ giá trị rỗng)
+    const maLenhValues = new Set();
+    for (let i = 1; i < lenhSanXuatData.length; i++) {
+        const value = lenhSanXuatData[i][maLenhIdx];
+        if (value && value.trim() !== '') {
+            maLenhValues.add(value.trim());
+        }
+    }
+
+    const sortedValues = Array.from(maLenhValues).sort();
+
+    // Container element
+    const containerElement = document.getElementById('ma-lenh-sxpk-container');
+    if (!containerElement) return;
+
+    // Xóa nội dung cũ
+    containerElement.innerHTML = '';
+
+    // Tạo input tìm kiếm
+    const searchInput = document.createElement('input');
+    searchInput.type = 'text';
+    searchInput.className = 'multi-select-search';
+    searchInput.placeholder = 'Tìm kiếm mã lệnh...';
+    searchInput.id = 'ma-lenh-sxpk-search';
+
+    containerElement.appendChild(searchInput);
+
+    // Tạo checkbox "Tất cả mã lệnh" (mặc định được chọn)
+    const allOptionDiv = document.createElement('div');
+    allOptionDiv.className = 'multi-select-option select-all-option';
+
+    const allCheckbox = document.createElement('input');
+    allCheckbox.type = 'checkbox';
+    allCheckbox.id = 'ma-lenh-sxpk-all';
+    allCheckbox.checked = true;
+
+    const allLabel = document.createElement('label');
+    allLabel.htmlFor = 'ma-lenh-sxpk-all';
+    allLabel.textContent = 'Tất cả mã lệnh';
+
+    allOptionDiv.appendChild(allCheckbox);
+    allOptionDiv.appendChild(allLabel);
+    containerElement.appendChild(allOptionDiv);
+
+    // Thêm sự kiện cho checkbox "Tất cả mã lệnh"
+    allCheckbox.addEventListener('change', function () {
+        const checkboxes = containerElement.querySelectorAll('input[type="checkbox"]:not(#ma-lenh-sxpk-all)');
+        checkboxes.forEach(checkbox => {
+            checkbox.checked = this.checked;
+        });
+        updateMaLenhLabel();
+        requireRefilterSanXuatPhuKienNhua();
+    });
+
+    // Add options mới
+    sortedValues.forEach(value => {
+        const optionDiv = document.createElement('div');
+        optionDiv.className = 'multi-select-option';
+
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.id = `ma-lenh-sxpk-${value.replace(/\s+/g, '-')}`;
+        checkbox.value = value;
+
+        const label = document.createElement('label');
+        label.htmlFor = checkbox.id;
+        label.textContent = value;
+
+        optionDiv.appendChild(checkbox);
+        optionDiv.appendChild(label);
+        containerElement.appendChild(optionDiv);
+
+        // Thêm sự kiện cho từng checkbox
+        checkbox.addEventListener('change', function () {
+            const allCheckbox = document.getElementById('ma-lenh-sxpk-all');
+            const checkboxes = containerElement.querySelectorAll('input[type="checkbox"]:not(#ma-lenh-sxpk-all)');
+            const checkedCount = Array.from(checkboxes).filter(cb => cb.checked).length;
+
+            // Nếu tất cả các checkbox đều được chọn, chọn "Tất cả mã lệnh"
+            if (checkedCount === checkboxes.length) {
+                allCheckbox.checked = true;
+            }
+            // Nếu không có checkbox nào được chọn, chọn "Tất cả mã lệnh"
+            else if (checkedCount === 0) {
+                allCheckbox.checked = true;
+            }
+            // Nếu có một số checkbox được chọn, bỏ chọn "Tất cả mã lệnh"
+            else {
+                allCheckbox.checked = false;
+            }
+
+            updateMaLenhLabel();
+            requireRefilterSanXuatPhuKienNhua();
+        });
+    });
+
+    // Thêm sự kiện tìm kiếm
+    searchInput.addEventListener("input", function () {
+        const keyword = searchInput.value.trim().toLowerCase();
+
+        const options = Array.from(containerElement.querySelectorAll(".multi-select-option"));
+
+        if (keyword === "") {
+            options.forEach(opt => opt.classList.remove("filtered-out"));
+            // Sắp xếp: selected lên trước
+            options.sort((a, b) => {
+                const aChecked = a.querySelector("input").checked;
+                const bChecked = b.querySelector("input").checked;
+                return bChecked - aChecked;
+            });
+            options.forEach(opt => containerElement.appendChild(opt));
+            return;
+        }
+
+        let matched = [];
+        let selectedNotMatched = [];
+        let others = [];
+
+        options.forEach(opt => {
+            const labelText = opt.textContent.toLowerCase();
+            const checked = opt.querySelector("input").checked;
+            if (labelText.includes(keyword)) {
+                matched.push(opt);
+            } else if (checked) {
+                selectedNotMatched.push(opt);
+            } else {
+                others.push(opt);
+            }
+        });
+
+        options.forEach(opt => opt.classList.add("filtered-out"));
+        matched.forEach(opt => {
+            opt.classList.remove("filtered-out");
+            containerElement.appendChild(opt);
+        });
+        selectedNotMatched.forEach(opt => {
+            opt.classList.remove("filtered-out");
+            containerElement.appendChild(opt);
+        });
+        // others vẫn ẩn
+    });
+
+    // Giữ container mở rộng khi focus vào ô tìm kiếm
+    searchInput.addEventListener('focus', function () {
+        containerElement.classList.add('expanded');
+    });
+
+    let hideTimeout;
+    containerElement.addEventListener("mouseleave", function () {
+        hideTimeout = setTimeout(() => {
+            containerElement.classList.remove("expanded");
+        }, 100);
+    });
+    containerElement.addEventListener("mouseenter", function () {
+        clearTimeout(hideTimeout);
+    });
+    document.addEventListener("click", function (e) {
+        if (!containerElement.contains(e.target)) {
+            containerElement.classList.remove("expanded");
+        }
+    });
+    searchInput.addEventListener('blur', function () {
+        setTimeout(() => {
+            if (!containerElement.matches(':hover')) {
+                containerElement.classList.remove('expanded');
+            }
+        }, 200);
+    });
+
+    updateMaLenhLabel();
+}
+
+// Hàm lấy danh sách mã lệnh được chọn từ multi-select
+function getSelectedMaLenh() {
+    const container = document.getElementById('ma-lenh-sxpk-container');
+    if (!container) return [];
+
+    const allCheckbox = document.getElementById('ma-lenh-sxpk-all');
+    if (allCheckbox && allCheckbox.checked) {
+        return []; // Trả về mảng rỗng nếu chọn "Tất cả mã lệnh"
+    }
+
+    const checkboxes = container.querySelectorAll('input[type="checkbox"]:checked:not(#ma-lenh-sxpk-all)');
+    return Array.from(checkboxes).map(cb => cb.value);
+}
+
+function updateMaLenhLabel() {
+    const selectedSpan = document.getElementById('ma-lenh-selected-sxpk');
+    if (!selectedSpan) return;
+
+    const allCheckbox = document.getElementById('ma-lenh-sxpk-all');
+    if (allCheckbox && allCheckbox.checked) {
+        selectedSpan.textContent = "Đã chọn: Tất cả";
+        return;
+    }
+
+    const selected = getSelectedMaLenh();
+    selectedSpan.textContent = `Đã chọn: ${selected.length}`;
 }
 
 // Cập nhật trạng thái kết nối
@@ -5273,4 +5577,376 @@ function requireRefilterXuatYeuCau() {
 
     filteredResultsXuatYeuCau = [];
     showMessageXuatYeuCau("Bạn đã thay đổi bộ lọc. Vui lòng nhấn 'Lọc' để cập nhật kết quả mới.", "error");
+}
+
+// ==================== TAB SẢN XUẤT PHỤ KIỆN NHỰA ====================
+
+function initSanXuatPhuKienNhuaEventListeners() {
+    const btnLoc = document.getElementById('btn-loc-sxpk');
+    if (btnLoc) btnLoc.addEventListener('click', applyFilterSanXuatPhuKienNhua);
+
+    const btnReset = document.getElementById('btn-reset-sxpk');
+    if (btnReset) btnReset.addEventListener('click', resetFilterSanXuatPhuKienNhua);
+
+    const btnExport = document.getElementById('btn-export-sxpk');
+    if (btnExport) btnExport.addEventListener('click', exportToExcelSanXuatPhuKienNhua);
+
+    const tuNgay = document.getElementById('tu-ngay-sxpk');
+    if (tuNgay) tuNgay.addEventListener('change', requireRefilterSanXuatPhuKienNhua);
+
+    const denNgay = document.getElementById('den-ngay-sxpk');
+    if (denNgay) denNgay.addEventListener('change', requireRefilterSanXuatPhuKienNhua);
+}
+
+function resetFilterSanXuatPhuKienNhua() {
+    // Reset multi-select mã lệnh
+    const allCheckbox = document.getElementById('ma-lenh-sxpk-all');
+    if (allCheckbox) {
+        allCheckbox.checked = true;
+        // Bỏ chọn tất cả checkbox con
+        const checkboxes = document.querySelectorAll('#ma-lenh-sxpk-container input[type="checkbox"]:not(#ma-lenh-sxpk-all)');
+        checkboxes.forEach(cb => cb.checked = false);
+        updateMaLenhLabel(); // cập nhật label
+    }
+
+    document.getElementById('tu-ngay-sxpk').value = '';
+    document.getElementById('den-ngay-sxpk').value = '';
+
+    document.getElementById('results-table-sxpk').style.display = 'none';
+    document.getElementById('no-results-sxpk').style.display = 'block';
+    document.getElementById('results-count-sxpk').textContent = 'Kết quả: Chưa có dòng nào được lọc.';
+    filteredResultsSxpk = [];
+}
+
+function requireRefilterSanXuatPhuKienNhua() {
+    document.getElementById('results-table-sxpk').style.display = 'none';
+    document.getElementById('no-results-sxpk').style.display = 'block';
+    document.getElementById('results-count-sxpk').textContent = 'Kết quả: Chưa có dòng nào được lọc.';
+    filteredResultsSxpk = [];
+    showMessageSxpk('Bạn đã thay đổi bộ lọc. Vui lòng nhấn "Lọc" để cập nhật kết quả mới.', 'error');
+}
+
+async function applyFilterSanXuatPhuKienNhua() {
+    showLoadingSxpk(true);
+    try {
+        if (!isDataLoaded) {
+            await fetchDataFromSheets();
+        }
+
+        const filterOptions = {
+            maLenhList: getSelectedMaLenh(), // Lấy danh sách mã lệnh được chọn
+            tuNgay: document.getElementById('tu-ngay-sxpk').value,
+            denNgay: document.getElementById('den-ngay-sxpk').value
+        };
+
+        filteredResultsSxpk = filterDataSanXuatPhuKienNhua(filterOptions);
+        displayResultsSanXuatPhuKienNhua(filteredResultsSxpk);
+        showMessageSxpk(`Đã tìm thấy ${filteredResultsSxpk.length} dòng phù hợp.`, 'success');
+    } catch (error) {
+        console.error('Lỗi khi áp dụng bộ lọc:', error);
+        showMessageSxpk('Đã xảy ra lỗi khi tải dữ liệu. Vui lòng thử lại.', 'error');
+    } finally {
+        showLoadingSxpk(false);
+    }
+}
+
+function filterDataSanXuatPhuKienNhua(filterOptions) {
+    // Kiểm tra dữ liệu đầu vào
+    if (!lenhSanXuatData.length || !lenhSanXuatChiTietData.length) {
+        console.warn('Không có dữ liệu lenh_san_xuat hoặc chi tiết');
+        return [];
+    }
+
+    // --- 1. Xây dựng lookup từ các sheet phụ trợ ---
+    // Đã có sẵn lookupKhuon, lookupHatNhua, lookupDsvt từ buildLookupTables()
+    // nhưng cần đảm bảo chúng đã được xây dựng.
+    // Nếu chưa, ta có thể xây dựng tại đây (nhưng tốt nhất đã có trong buildLookupTables)
+
+    // --- 2. Tạo map tổng sl_c_vt_i theo (ma_lenh_san_xuat, i) ---
+    const chiTietHeaders = lenhSanXuatChiTietData[0];
+    const maLenhChiTietIdx = chiTietHeaders.indexOf('ma_lenh_san_xuat_id');
+    if (maLenhChiTietIdx === -1) {
+        console.error('Không tìm thấy cột ma_lenh_san_xuat_id trong lenh_san_xuat_chi_tiet');
+        return [];
+    }
+
+    // Map: key = maLenh + '|' + i, value = tổng sl
+    const sumSlMap = new Map();
+
+    for (let r = 1; r < lenhSanXuatChiTietData.length; r++) {
+        const row = lenhSanXuatChiTietData[r];
+        const maLenh = row[maLenhChiTietIdx] || '';
+        if (!maLenh) continue;
+
+        // Duyệt i từ 1 đến 8
+        for (let i = 1; i <= 8; i++) {
+            const slIdx = chiTietHeaders.indexOf('sl_c_vt_' + i);
+            if (slIdx === -1) continue;
+            const sl = parseFloat(row[slIdx] || 0);
+            if (sl === 0) continue;
+            const key = maLenh + '|' + i;
+            sumSlMap.set(key, (sumSlMap.get(key) || 0) + sl);
+        }
+    }
+
+    // --- 3. Xử lý từng dòng trong lenh_san_xuat ---
+    const lsxHeaders = lenhSanXuatData[0];
+    const maLenhIdx = lsxHeaders.indexOf('ma_lenh_san_xuat');
+    const ngayXuatIdx = lsxHeaders.indexOf('ngay_xuat');
+    const maKhuonChiTietIdx = lsxHeaders.indexOf('ma_khuon_chi_tiet');
+
+    // Các chỉ số cột cho i và j
+    // Chúng ta sẽ xây dựng động
+    const results = [];
+
+    // Duyệt từng dòng lệnh
+    for (let r = 1; r < lenhSanXuatData.length; r++) {
+        const row = lenhSanXuatData[r];
+        const maLenh = row[maLenhIdx] || '';
+        if (!maLenh) continue;
+
+        const ngayXuat = row[ngayXuatIdx] || '';
+        const maKhuonChiTiet = row[maKhuonChiTietIdx] || '';
+
+        // Lọc theo ngày
+        if (filterOptions.tuNgay || filterOptions.denNgay) {
+            if (!ngayXuat) continue;
+            const date = parseDDMMYYYY(ngayXuat);
+            if (!date) continue;
+            const tu = filterOptions.tuNgay ? new Date(filterOptions.tuNgay) : null;
+            const den = filterOptions.denNgay ? new Date(filterOptions.denNgay) : null;
+            if (tu) tu.setHours(0, 0, 0, 0);
+            if (den) den.setHours(23, 59, 59, 999);
+            if (tu && date < tu) continue;
+            if (den && date > den) continue;
+        }
+
+        // Lọc theo mã lệnh (nếu có chọn)
+        if (filterOptions.maLenhList && filterOptions.maLenhList.length > 0) {
+            if (!filterOptions.maLenhList.includes(maLenh)) continue;
+        }
+
+        // Lấy diễn giải từ khuôn
+        const dienGiai = lookupKhuon[maKhuonChiTiet] || '';
+
+        // Duyệt i từ 1 đến 8
+        for (let i = 1; i <= 8; i++) {
+            const cVtIdx = lsxHeaders.indexOf('c_vt_' + i);
+            if (cVtIdx === -1) continue;
+            const cVt = row[cVtIdx] || '';
+            if (!cVt) continue;
+
+            // Lấy tổng số lượng từ map
+            const key = maLenh + '|' + i;
+            const totalSl = sumSlMap.get(key) || 0;
+            if (totalSl === 0) continue; // nếu không có sản xuất thì bỏ qua
+
+            // Lấy tên thành phẩm, dvt từ lookupDsvt
+            const cVtClean = cVt.replace(/\*/g, '').trim();
+            const tpInfo = lookupDsvt[cVtClean] || {};
+            const tenThanhPham = tpInfo.ten_vat_tu_the_hien || ''; // fallback: dùng chính mã
+            const dvtThanhPham = tpInfo.dvt || '';
+
+            // Duyệt j từ 1 đến 4
+            for (let j = 1; j <= 4; j++) {
+                // Tên cột: so_can_hn_j_pb_c_vt_i
+                const soCanPbIdx = lsxHeaders.indexOf('so_can_hn_' + j + '_pb_c_vt_' + i);
+                if (soCanPbIdx === -1) continue;
+                const soCanPb = parseFloat(row[soCanPbIdx] || 0);
+
+                // Tên cột: so_can_hn_j_pbhh_c_vt_i
+                const soCanPbhhIdx = lsxHeaders.indexOf('so_can_hn_' + j + '_pbhh_c_vt_' + i);
+                const soCanPbhh = soCanPbhhIdx !== -1 ? parseFloat(row[soCanPbhhIdx] || 0) : 0;
+
+                const soCanTotal = soCanPb + soCanPbhh;
+                if (soCanTotal === 0) continue; // không có nguyên liệu cho j này
+
+                // Lấy mã hạt nhựa tương ứng j (ma_hn_j)
+                const maHnIdx = lsxHeaders.indexOf('ma_hn_' + j);
+                const maHn = maHnIdx !== -1 ? row[maHnIdx] || '' : '';
+                const tenHatNhua = lookupHatNhua[maHn] || '';
+
+                // Tính số lượng NVL / 1 đơn vị SP
+                const nvlPerUnit = totalSl > 0 ? soCanTotal / totalSl : 0;
+
+                // Tạo dòng kết quả
+                results.push({
+                    soLenh: maLenh,
+                    ngay: ngayXuat,
+                    tinhTrang: 1,
+                    dienGiai: dienGiai,
+                    maThanhPham: cVt,
+                    tenThanhPham: tenThanhPham,
+                    soLuong: totalSl,
+                    dvtThanhPham: dvtThanhPham,
+                    donDatHang: '',
+                    hopDongBan: '',
+                    doiTuongTHCP_TP: cVt,
+                    maThongKe_TP: '',
+                    maNguyenVatLieu: maHn,
+                    tenNguyenVatLieu: tenHatNhua,
+                    dvtDinhMuc: 'kg',
+                    soLuongNVLPerUnit: nvlPerUnit,
+                    soLuongNVL: soCanTotal,
+                    khoanMucCP: 'NVLTT.ĐM',
+                    doiTuongTHCP_DM: cVt,
+                    maThongKe_DM: ''
+                });
+            }
+        }
+    }
+
+    console.log('Kết quả sau lọc:', results.length);
+    return results;
+}
+
+function displayResultsSanXuatPhuKienNhua(results) {
+    const resultsBody = document.getElementById('results-body-sxpk');
+    const resultsTable = document.getElementById('results-table-sxpk');
+    const noResults = document.getElementById('no-results-sxpk');
+    const resultsCount = document.getElementById('results-count-sxpk');
+
+    resultsCount.textContent = `Kết quả: ${results.length} dòng`;
+    resultsBody.innerHTML = '';
+
+    if (results.length === 0) {
+        resultsTable.style.display = 'none';
+        noResults.style.display = 'block';
+        return;
+    }
+
+    noResults.style.display = 'none';
+    resultsTable.style.display = 'table';
+
+    results.forEach(item => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${item.soLenh}</td>
+            <td>${item.ngay}</td>
+            <td>${item.tinhTrang}</td>
+            <td>${item.dienGiai}</td>
+            <td>${item.maThanhPham}</td>
+            <td>${item.tenThanhPham}</td>
+            <td>${item.soLuong}</td>
+            <td>${item.dvtThanhPham}</td>
+            <td>${item.donDatHang}</td>
+            <td>${item.hopDongBan}</td>
+            <td>${item.doiTuongTHCP_TP}</td>
+            <td>${item.maThongKe_TP}</td>
+            <td>${item.maNguyenVatLieu}</td>
+            <td>${item.tenNguyenVatLieu}</td>
+            <td>${item.dvtDinhMuc}</td>
+            <td>${item.soLuongNVLPerUnit}</td>
+            <td>${item.soLuongNVL}</td>
+            <td>${item.khoanMucCP}</td>
+            <td>${item.doiTuongTHCP_DM}</td>
+            <td>${item.maThongKe_DM}</td>
+        `;
+        resultsBody.appendChild(tr);
+    });
+}
+
+async function exportToExcelSanXuatPhuKienNhua() {
+    if (filteredResultsSxpk.length === 0) {
+        showMessageSxpk('Không có dữ liệu để xuất. Vui lòng thực hiện lọc trước.', 'error');
+        return;
+    }
+
+    try {
+        // --- Lấy danh sách mã lệnh duy nhất ---
+        const maLenhSet = new Set();
+        filteredResultsSxpk.forEach(item => {
+            if (item.soLenh) maLenhSet.add(item.soLenh);
+        });
+        const maLenhList = Array.from(maLenhSet).sort(); // sắp xếp tăng dần
+
+        // Tạo tên file
+        let fileName = 'Lệnh sản xuất phụ kiện nhựa';
+        if (maLenhList.length === 1) {
+            fileName += ' - ' + maLenhList[0];
+        } else if (maLenhList.length > 1) {
+            // Nối các mã bằng dấu gạch dưới
+            fileName += ' - ' + maLenhList.join(' - ');
+        }
+        fileName += '.xlsx';
+
+        // --- Tạo workbook ---
+        const workbook = new ExcelJS.Workbook();
+        const worksheet = workbook.addWorksheet('Sản xuất phụ kiện nhựa');
+
+        const headers = [
+            'Số lệnh (*)', 'Ngày', 'Tình trạng', 'Diễn giải',
+            'Mã thành phẩm (*)', 'Tên thành phẩm', 'Số lượng', 'ĐVT (Cho thành phẩm)',
+            'Đơn đặt hàng', 'Hợp đồng bán', 'Đối tượng THCP (Cho thành phẩm)',
+            'Mã thống kê (Cho thành phẩm)', 'Mã nguyên vật liệu (*)',
+            'Tên nguyên vật liệu', 'ĐVT (Cho định mức)',
+            'Số lượng NVL/1 đơn vị SP', 'Số lượng NVL', 'Khoản mục CP',
+            'Đối tượng THCP (Cho định mức)', 'Mã thống kê (Cho định mức)'
+        ];
+        worksheet.addRow(headers);
+        const headerRow = worksheet.getRow(1);
+        headerRow.font = { bold: true };
+        headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE0E0E0' } };
+
+        filteredResultsSxpk.forEach(item => {
+            const row = [
+                item.soLenh, item.ngay, item.tinhTrang, item.dienGiai,
+                item.maThanhPham, item.tenThanhPham, item.soLuong, item.dvtThanhPham,
+                item.donDatHang, item.hopDongBan, item.doiTuongTHCP_TP, item.maThongKe_TP,
+                item.maNguyenVatLieu, item.tenNguyenVatLieu, item.dvtDinhMuc,
+                item.soLuongNVLPerUnit, item.soLuongNVL, item.khoanMucCP,
+                item.doiTuongTHCP_DM, item.maThongKe_DM
+            ];
+            worksheet.addRow(row);
+        });
+
+        // Tự động điều chỉnh độ rộng cột
+        worksheet.columns.forEach(column => {
+            let maxLength = 0;
+            column.eachCell({ includeEmpty: true }, cell => {
+                const cellLength = cell.value ? cell.value.toString().length : 10;
+                if (cellLength > maxLength) maxLength = cellLength;
+            });
+            column.width = maxLength < 10 ? 10 : maxLength + 2;
+        });
+
+        const outputBuffer = await workbook.xlsx.writeBuffer();
+        const blob = new Blob([outputBuffer], {
+            type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = fileName;
+        link.click();
+
+        showMessageSxpk(`Đã xuất ${filteredResultsSxpk.length} dòng ra file Excel (${maLenhList.length} mã lệnh).`, 'success');
+    } catch (error) {
+        console.error('Lỗi xuất Excel:', error);
+        showMessageSxpk('Không thể xuất Excel. Vui lòng thử lại.', 'error');
+    }
+}
+
+function showLoadingSxpk(show) {
+    const loading = document.getElementById('loading-sxpk');
+    if (loading) loading.style.display = show ? 'block' : 'none';
+}
+
+function showMessageSxpk(message, type) {
+    const count = document.getElementById('results-count-sxpk');
+    if (!count) return;
+    count.className = 'results-count';
+    if (type === 'success') {
+        count.style.backgroundColor = '#e8f7e8';
+        count.style.color = '#0c9c07';
+        count.style.borderLeft = '4px solid #0c9c07';
+    } else if (type === 'error') {
+        count.style.backgroundColor = '#ffeaea';
+        count.style.color = '#c00';
+        count.style.borderLeft = '4px solid #c00';
+    }
+    count.style.padding = '5px';
+    count.style.borderRadius = '6px';
+    count.style.fontSize = '16px';
+    count.style.fontWeight = '600';
+    count.textContent = message;
 }
