@@ -1880,7 +1880,11 @@ function passesFilterConditionsNhap(chiTietRow, donHangRow, chiTietColumnIndex, 
         return false;
     }
 
-    if (trongLuongPhuKien === "Tiêu chuẩn" && tenSanPham === "Vật tư khác") {
+    // if (trongLuongPhuKien === "Tiêu chuẩn" && tenSanPham === "Vật tư khác") { (Trước ngày 15/7/2026)
+    //    return false;
+    //}
+
+    if (trongLuongPhuKien === "Tiêu chuẩn") {
         return false;
     }
 
@@ -2448,7 +2452,11 @@ function passesFilterConditionsXuat(chiTietRow, donHangRow, chiTietColumnIndex, 
         return false;
     }
 
-    if (trongLuongPhuKien === "Tiêu chuẩn" && tenSanPham === "Vật tư khác") {
+    // if (trongLuongPhuKien === "Tiêu chuẩn" && tenSanPham === "Vật tư khác") { (Trước ngày 15/7/2026)
+    //    return false;
+    //}
+
+    if (trongLuongPhuKien === "Tiêu chuẩn") {
         return false;
     }
 
